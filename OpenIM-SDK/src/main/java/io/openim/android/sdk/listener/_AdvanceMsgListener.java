@@ -74,7 +74,6 @@ final public class _AdvanceMsgListener extends BaseListener<OnAdvanceMsgListener
         post(() -> listener.onRecvOfflineNewMessage(list));
     }
 
-    @Override
     public void onRecvOnlineOnlyMessage(String s) {
         post(() -> listener.onRecvOnlineOnlyMessage(s));
     }
