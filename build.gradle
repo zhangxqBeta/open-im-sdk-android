@@ -1,13 +1,28 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
     repositories {
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file("gradle.properties").newDataInputStream())
         maven { url 'https://maven.aliyun.com/nexus/content/groups/public/' }
         maven { url 'https://maven.aliyun.com/nexus/content/repositories/jcenter' }
         maven { url 'https://maven.aliyun.com/nexus/content/repositories/google' }
         maven { url 'https://maven.aliyun.com/nexus/content/repositories/gradle-plugin' }
         maven { url 'https://open-im-online.rentsoft.cn:51000/repository/maven2/' }
-
         maven { url 'https://jitpack.io' }
+        maven {
+            url = uri("https://packages.aliyun.com/maven/repository/2123984-release-mlHWZG/")
+            credentials {
+                username = properties.getProperty("mavenUsername")
+                password = properties.getProperty("mavenPassword")
+            }
+        }
+        maven {
+            credentials {
+                username = properties.getProperty("mavenUsername")
+                password = properties.getProperty("mavenPassword")
+            }
+            url = uri("https://packages.aliyun.com/maven/repository/2123984-snapshot-bogZ1m/")
+        }
         google()
         mavenCentral()
     }
@@ -21,13 +36,28 @@ buildscript {
 
 allprojects {
     repositories {
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file("gradle.properties").newDataInputStream())
         maven { url 'https://maven.aliyun.com/nexus/content/groups/public/' }
         maven { url 'https://maven.aliyun.com/nexus/content/repositories/jcenter' }
         maven { url 'https://maven.aliyun.com/nexus/content/repositories/google' }
         maven { url 'https://maven.aliyun.com/nexus/content/repositories/gradle-plugin' }
         maven { url 'https://open-im-online.rentsoft.cn:51000/repository/maven2/' }
-
         maven { url 'https://jitpack.io' }
+        maven {
+            url = uri("https://packages.aliyun.com/maven/repository/2123984-release-mlHWZG/")
+            credentials {
+                username = properties.getProperty("mavenUsername")
+                password = properties.getProperty("mavenPassword")
+            }
+        }
+        maven {
+            credentials {
+                username = properties.getProperty("mavenUsername")
+                password = properties.getProperty("mavenPassword")
+            }
+            url = uri("https://packages.aliyun.com/maven/repository/2123984-snapshot-bogZ1m/")
+        }
         google()
         mavenCentral()
     }

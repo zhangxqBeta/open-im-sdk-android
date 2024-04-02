@@ -1,0 +1,126 @@
+apply plugin: 'maven-publish'
+
+def gitBranch = 'git symbolic-ref --short -q HEAD'.execute().text.trim().replaceAll('/', '.')
+
+def gitSha = 'git rev-parse --short HEAD'.execute([], project.rootDir).text.trim()
+
+def packageMan = (System.getenv("DEV") ?: gitBranch) + "-" + gitSha
+
+def repo = System.getenv("REPO") ?: defaultMavenRepo ?: "local"
+
+def moduleVersion = System.getenv("MODULE_VERSION") ?: null
+
+def moduleDesc = System.getenv("MODULE_DESC") ?: null
+
+def getRepoUrl(String repoSetting) {
+    def repoUrl
+    if (repoSetting == "release") {
+        repoUrl = 'https://packages.aliyun.com/maven/repository/2123984-release-mlHWZG/'
+    } else if (repoSetting == "snapshot") {
+        repoUrl = 'https://packages.aliyun.com/maven/repository/2123984-snapshot-bogZ1m/'
+    } else {
+        repoUrl = 'file://' + project.rootProject.rootDir.parent + '/.repo'
+    }
+    return repoUrl
+}
+
+
+
+publishing {
+
+    repositories {
+
+        def mavenUsername = '60ffa397aa6381038e702b9a'
+        def mavenPassword = 'OO=dNR)3bF84'
+
+        maven {
+            // name "release/snapshots"
+            url = getRepoUrl(repo)
+            print(url)
+            if (repo != 'local'){
+                credentials {
+                    username = mavenUsername
+                    password = mavenPassword
+                }
+            }
+        }
+    }
+
+    publications {
+        release(MavenPublication) {
+            // artifact javadocJar
+            // artifact sourcesJar
+            afterEvaluate {
+                artifact(tasks.getByName("bundleReleaseAar"))
+            }
+
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+                def scopes = [configurations.implementation]
+                if (configurations.hasProperty("api")) {
+                    scopes.add(configurations.api)
+                }
+                if (configurations.hasProperty("compile")) {
+                    scopes.add(configurations.compile)
+                }
+                if (configurations.hasProperty("debugImplementation")) {
+                    scopes.add(configurations.debugImplementation)
+                }
+                if (configurations.hasProperty("releaseImplementation")) {
+                    scopes.add(configurations.releaseImplementation)
+                }
+
+                //if (project.ext.targetType != "jar") {
+                //    scopes.add(configurations.provided)
+                //}
+
+                scopes.each { scope ->
+                    scope.allDependencies.each {
+                        if (it instanceof ModuleDependency) {
+                            boolean isTransitive = ((ModuleDependency) it).transitive
+                            if (!isTransitive) {
+                                println ">>>> not transitive dependency: [${it.group}, ${it.name}, ${it.version}]"
+                                return
+                            }
+                        }
+
+                        if (it.group == "${project.rootProject.name}.libs" || it.version == 'unspecified') {
+                            return
+                        }
+
+                        if (it.group && it.name && it.version) {
+                            def dependencyNode = dependenciesNode.appendNode('dependency')
+                            dependencyNode.appendNode('groupId', it.group)
+                            dependencyNode.appendNode('artifactId', it.name)
+                            dependencyNode.appendNode('version', it.version)
+                            dependencyNode.appendNode('scope', scope.name)
+                        }
+                    }
+                }
+            }
+
+            pom {
+                groupId = GROUP
+                artifactId = POM_ARTIFACT_ID
+                def innerVersion = moduleVersion ?: VERSION
+                version = repo == 'snapshot' ? innerVersion + "-SNAPSHOT" : innerVersion
+
+                description = moduleDesc ?: "Update version to " + innerVersion
+
+                organization {
+                    name = 'Construct Mobile Inc.'
+                    url = 'http://www.litatom.com/#/'
+                }
+
+                developers {
+                    developer {
+                        name = packageMan
+                        organization = 'Construct Mobile Inc.'
+                        organizationUrl = 'http://www.litatom.com/#/'
+                    }
+                }
+            }
+        }
+    }
+}
+
