@@ -3,7 +3,7 @@ package io.openim.android.sdk.internal.log;
 import android.text.TextUtils;
 import android.util.Log;
 
-import io.openim.android.sdk.BuildConfig;
+//import io.openim.android.sdk.BuildConfig;
 
 /**
  * Created by alvince on 2021/9/24
@@ -18,8 +18,9 @@ public final class LogcatHelper {
         if (TextUtils.isEmpty(message)) {
             return;
         }
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, message);
-        }
+        Log.d(TAG, message);
+//        if (BuildConfig.DEBUG) {
+//            Log.d(TAG, message);
+//        }
     }
 }

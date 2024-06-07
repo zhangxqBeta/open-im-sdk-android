@@ -1,5 +1,6 @@
 package io.openim.android.sdk.manager;
 
+import io.openim.android.sdk.config.IMConfig;
 import java.util.Comparator;
 import java.util.List;
 
@@ -18,15 +19,17 @@ import open_im_sdk.Open_im_sdk;
  * 会话管理器
  */
 public class ConversationManager {
+
     /**
-     * 设置会话监听器
-     * 如果会话改变，会触发onConversationChanged方法回调
-     * 如果新增会话，会触发onNewConversation回调
-     * 如果未读消息数改变，会触发onTotalUnreadMessageCountChanged回调
+     * 设置会话监听器 如果会话改变，会触发onConversationChanged方法回调 如果新增会话，会触发onNewConversation回调 如果未读消息数改变，会触发onTotalUnreadMessageCountChanged回调
      * <p>
      * 启动app时主动拉取一次会话记录，后续会话改变可以根据监听器回调再刷新数据
      */
     public void setOnConversationListener(OnConversationListener listener) {
+        //todo: impl
+        if (IMConfig.getInstance().useNativeImpl) {
+            return;
+        }
         Open_im_sdk.setConversationListener(new _ConversationListener(listener));
     }
 
@@ -42,9 +45,9 @@ public class ConversationManager {
     /**
      * 获取会话记录
      *
-     * @param base   callback List<{@link ConversationInfo}>
+     * @param base callback List<{@link ConversationInfo}>
      * @param offset 偏移量，每次开始的index值
-     * @param count  数量，每次获取的数量总数
+     * @param count 数量，每次获取的数量总数
      */
     public void getConversationListSplit(OnBase<List<ConversationInfo>> base, long offset, long count) {
         Open_im_sdk.getConversationListSplit(BaseImpl.arrayBase(base, ConversationInfo.class), ParamsUtil.buildOperationID(), offset, count);
@@ -53,11 +56,15 @@ public class ConversationManager {
     /**
      * 获取单个会话
      *
-     * @param sourceId:    聊值：UserId；聊值：GroupId
+     * @param sourceId: 聊值：UserId；聊值：GroupId
      * @param sessionType: 单聊：1；群聊：2
-     * @param base         callback {@link ConversationInfo}
+     * @param base callback {@link ConversationInfo}
      */
     public void getOneConversation(OnBase<ConversationInfo> base, String sourceId, int sessionType) {
+        //todo: impl
+        if (IMConfig.getInstance().useNativeImpl) {
+            return;
+        }
         Open_im_sdk.getOneConversation(BaseImpl.objectBase(base, ConversationInfo.class), ParamsUtil.buildOperationID(), sessionType, sourceId);
     }
 
@@ -65,7 +72,7 @@ public class ConversationManager {
      * 根据会话id获取多个会话
      *
      * @param conversationIDs 会话ID 集合
-     * @param base            callback List<{@link ConversationInfo}>
+     * @param base callback List<{@link ConversationInfo}>
      */
     public void getMultipleConversation(OnBase<List<ConversationInfo>> base, List<String> conversationIDs) {
         Open_im_sdk.getMultipleConversation(BaseImpl.arrayBase(base, ConversationInfo.class), ParamsUtil.buildOperationID(),
@@ -77,8 +84,8 @@ public class ConversationManager {
      * 设置草稿
      *
      * @param conversationID 会话ID
-     * @param draftText      草稿
-     * @param base           callback String
+     * @param draftText 草稿
+     * @param base callback String
      **/
     public void setConversationDraft(OnBase<String> base, String conversationID, String draftText) {
         Open_im_sdk.setConversationDraft(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), conversationID, draftText);
@@ -88,8 +95,8 @@ public class ConversationManager {
      * 置顶会话
      *
      * @param conversationID 会话ID
-     * @param isPinned       true 置顶； false 取消置顶
-     * @param base           callback String
+     * @param isPinned true 置顶； false 取消置顶
+     * @param base callback String
      **/
     public void pinConversation(OnBase<String> base, String conversationID, boolean isPinned) {
         Open_im_sdk.pinConversation(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), conversationID, isPinned);
@@ -105,9 +112,13 @@ public class ConversationManager {
      * 标记群组会话已读
      *
      * @param groupID 群组ID
-     * @param base    callback String
+     * @param base callback String
      */
     public void markGroupMessageHasRead(OnBase<String> base, String groupID) {
+        //todo: impl
+        if (IMConfig.getInstance().useNativeImpl) {
+            return;
+        }
         Open_im_sdk.markConversationMessageAsRead(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), groupID);
     }
 
@@ -122,10 +133,9 @@ public class ConversationManager {
 
 
     /**
-     * 获取会话id；
-     * 在从群列表进入聊天窗口后退群，这时候需要根据此方法获取会话id删除会话。
+     * 获取会话id； 在从群列表进入聊天窗口后退群，这时候需要根据此方法获取会话id删除会话。
      *
-     * @param sourceId:    聊值：UserId；聊值：GroupId
+     * @param sourceId: 聊值：UserId；聊值：GroupId
      * @param sessionType: 单聊：1；群聊：2
      */
     public String getConversationIDBySessionType(String sourceId, int sessionType) {
@@ -142,9 +152,7 @@ public class ConversationManager {
     }
 
     /**
-     * 获取会话免打扰状态
-     * 1: Do not receive messages, 2: Do not notify when messages are received; 0: Normal
-     * [{"conversationId":"single_13922222222","result":0}]
+     * 获取会话免打扰状态 1: Do not receive messages, 2: Do not notify when messages are received; 0: Normal [{"conversationId":"single_13922222222","result":0}]
      */
     public void getConversationRecvMessageOpt(OnBase<List<NotDisturbInfo>> base, List<String> conversationIDs) {
         Open_im_sdk.getConversationRecvMessageOpt(BaseImpl.arrayBase(base, NotDisturbInfo.class), ParamsUtil.buildOperationID(),
@@ -169,6 +177,10 @@ public class ConversationManager {
     }
 
     public void deleteConversationAndDeleteAllMsg(OnBase<String> base, String conversionID) {
+        //todo: impl
+        if (IMConfig.getInstance().useNativeImpl) {
+            return;
+        }
         Open_im_sdk.deleteConversationAndDeleteAllMsg(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), conversionID);
     }
 
@@ -209,21 +221,17 @@ public class ConversationManager {
 
     /**
      * 设置 到期删除
-     * @param base
-     * @param conversationID
-     * @param isMsgDestruct
      */
     public void setConversationIsMsgDestruct(OnBase<String> base, String conversationID, boolean isMsgDestruct) {
         Open_im_sdk.setConversationIsMsgDestruct(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), conversationID, isMsgDestruct);
     }
 
     /**
-     *设置到期删除时间
-     * @param base
-     * @param conversationID
+     * 设置到期删除时间
+     *
      * @param msgDestructTime 秒
      */
-    public void setConversationMsgDestructTime(OnBase<String> base, String conversationID,  long msgDestructTime) {
+    public void setConversationMsgDestructTime(OnBase<String> base, String conversationID, long msgDestructTime) {
         Open_im_sdk.setConversationMsgDestructTime(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), conversationID, msgDestructTime);
     }
 

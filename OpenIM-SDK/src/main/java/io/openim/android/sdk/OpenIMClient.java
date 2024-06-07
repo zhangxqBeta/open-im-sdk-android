@@ -8,7 +8,6 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Build;
-import android.util.ArrayMap;
 
 
 import androidx.annotation.NonNull;
@@ -16,18 +15,19 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
+import io.openim.android.sdk.config.IMConfig;
+import io.openim.android.sdk.connection.ConnectionManager;
+import io.openim.android.sdk.database.ChatDbManager;
+import io.openim.android.sdk.utils.SpUtils;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import io.openim.android.sdk.internal.log.LogcatHelper;
 import io.openim.android.sdk.listener.BaseImpl;
 import io.openim.android.sdk.listener.OnBase;
 import io.openim.android.sdk.listener.OnConnListener;
 import io.openim.android.sdk.listener.OnCustomBusinessListener;
-import io.openim.android.sdk.listener.OnListenerForService;
 import io.openim.android.sdk.listener.OnPutFileListener;
 import io.openim.android.sdk.listener._ConnListener;
 import io.openim.android.sdk.listener._CustomBusinessListener;
@@ -47,13 +47,20 @@ import open_im_sdk_callback.Base;
 import open_im_sdk_callback.UploadLogProgress;
 
 public class OpenIMClient {
+
     public ConversationManager conversationManager;
     public FriendshipManager friendshipManager;
     public GroupManager groupManager;
     public MessageManager messageManager;
     public UserInfoManager userInfoManager;
 
-    private Application app;
+    public Application app;
+
+    /*native impl*/
+    private IMConfig imConfig;
+
+    /*native impl*/
+    private OnConnListener connListener;
 
     private OpenIMClient() {
         conversationManager = new ConversationManager();
@@ -61,9 +68,11 @@ public class OpenIMClient {
         groupManager = new GroupManager();
         messageManager = new MessageManager();
         userInfoManager = new UserInfoManager();
+        imConfig = IMConfig.getInstance();
     }
 
     private static class Singleton {
+
         private static final OpenIMClient INSTANCE = new OpenIMClient();
     }
 
@@ -72,23 +81,37 @@ public class OpenIMClient {
     }
 
     /**
-     * 初始化sdk
-     * 注：在创建图片，语音，视频，文件等需要路径参数的消息体时，
-     * 如果选择的是非全路径方法如：createSoundMessage（全路径方法为：createSoundMessageFromFullPath）,
-     * 需要将文件自行拷贝到dbPath目录下，如果此时文件路径为 apath+"/sound/a.mp3"，则参数path的值为：/sound/a.mp3。
-     * 如果选择的全路径方法，路径为你文件的实际路径不需要再拷贝。
+     * 初始化sdk 注：在创建图片，语音，视频，文件等需要路径参数的消息体时， 如果选择的是非全路径方法如：createSoundMessage（全路径方法为：createSoundMessageFromFullPath）, 需要将文件自行拷贝到dbPath目录下，如果此时文件路径为
+     * apath+"/sound/a.mp3"，则参数path的值为：/sound/a.mp3。 如果选择的全路径方法，路径为你文件的实际路径不需要再拷贝。
      *
-     * @param listener             SDK初始化监听
+     * @param listener SDK初始化监听
      * @return boolean   true成功; false失败
      */
     public boolean initSDK(Application application, InitConfig initConfig, @NotNull OnConnListener listener) {
         this.app = application;
-        boolean initialized = Open_im_sdk.initSDK(new _ConnListener(listener),
-            ParamsUtil.buildOperationID(), JsonUtil.toString(initConfig));
-        LogcatHelper.logDInDebug(String.format("Initialization successful: %s", initialized));
-        return initialized;
+
+        imConfig.useNativeImpl = initConfig.useNativeImpl;
+        imConfig.apiAddr = initConfig.apiAddr;
+        imConfig.dataDir = initConfig.dataDir;
+        imConfig.wsAddr = initConfig.wsAddr;
+        if (imConfig.useNativeImpl) {
+            return initSDKNativeImpl(listener);
+        } else {
+            boolean initialized = Open_im_sdk.initSDK(new _ConnListener(listener),
+                ParamsUtil.buildOperationID(), JsonUtil.toString(initConfig));
+            LogcatHelper.logDInDebug(String.format("Initialization successful: %s", initialized));
+            return initialized;
+        }
+
     }
-    public void unInit(){
+
+    private boolean initSDKNativeImpl(@NotNull OnConnListener listener) {
+        connListener = listener;
+        //todo
+        return true;
+    }
+
+    public void unInit() {
         Open_im_sdk.unInitSDK(ParamsUtil.buildOperationID());
     }
 
@@ -159,14 +182,28 @@ public class OpenIMClient {
     }
 
     /**
-     * 登录
-     * 注：调用此方法前请先注册各类监听如：OnAdvanceMsgListener、OnFriendshipListener、OnConversationListener、OnGroupListener等...
+     * 登录 注：调用此方法前请先注册各类监听如：OnAdvanceMsgListener、OnFriendshipListener、OnConversationListener、OnGroupListener等...
      *
-     * @param uid   用户id
+     * @param uid 用户id
      * @param token 用户token
-     * @param base  callback String
+     * @param base callback String
      */
     public void login(@NotNull OnBase<String> base, String uid, String token) {
+        if (imConfig.useNativeImpl) {
+            imConfig.userID = uid;
+            imConfig.token = token;
+            SpUtils.putToken(token);
+            SpUtils.putUid(uid);
+            //init db
+            var chatDbManager = ChatDbManager.getInstance();
+            chatDbManager.init(app, uid);
+            chatDbManager.checkSendingMessage();
+            
+            //init ws
+            ConnectionManager.getInstance().connect();
+            return;
+        }
+
         Open_im_sdk.login(new Base() {
             @Override
             public void onError(int i, String s) {
@@ -213,18 +250,16 @@ public class OpenIMClient {
      * @param putArgs 实体
      */
     public void uploadFile(OnBase<String> base, OnPutFileListener listener,
-                           PutArgs putArgs) {
+        PutArgs putArgs) {
         Open_im_sdk.uploadFile(BaseImpl.stringBase(base),
-            ParamsUtil.buildOperationID(), JsonUtil.toString(putArgs),new _PutFileCallback(listener));
+            ParamsUtil.buildOperationID(), JsonUtil.toString(putArgs), new _PutFileCallback(listener));
     }
 
     /**
-     *  上传出错日志
-     * @param base
-     * @param params
+     * 上传出错日志
      */
-    public void uploadLogs(OnBase<String> base, List<String> params,String ex, UploadLogProgress progress) {
-        Open_im_sdk.uploadLogs(BaseImpl.stringBase(base),ParamsUtil.buildOperationID(),ex,progress);
+    public void uploadLogs(OnBase<String> base, List<String> params, String ex, UploadLogProgress progress) {
+        Open_im_sdk.uploadLogs(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), ex, progress);
     }
 
 
@@ -233,8 +268,8 @@ public class OpenIMClient {
      *
      * @param fcmToken token
      */
-    public void updateFcmToken(OnBase<String> base, String fcmToken,long expireTime) {
-        Open_im_sdk.updateFcmToken(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), fcmToken,expireTime);
+    public void updateFcmToken(OnBase<String> base, String fcmToken, long expireTime) {
+        Open_im_sdk.updateFcmToken(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), fcmToken, expireTime);
     }
 
 
@@ -253,9 +288,9 @@ public class OpenIMClient {
     }
 
     /**
-     *  自定义业务通知
+     * 自定义业务通知
      */
-    public void setCustomBusinessListener(OnCustomBusinessListener customBusinessListener){
+    public void setCustomBusinessListener(OnCustomBusinessListener customBusinessListener) {
         Open_im_sdk.setCustomBusinessListener(new _CustomBusinessListener(customBusinessListener));
     }
 }
