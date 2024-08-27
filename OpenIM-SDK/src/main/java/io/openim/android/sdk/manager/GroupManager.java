@@ -5,6 +5,7 @@ import android.util.ArrayMap;
 
 
 import io.openim.android.sdk.config.IMConfig;
+import io.openim.android.sdk.internal.log.LogcatHelper;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import io.openim.android.sdk.models.GroupInviteResult;
 import io.openim.android.sdk.models.GroupMembersInfo;
 import io.openim.android.sdk.utils.JsonUtil;
 import io.openim.android.sdk.utils.ParamsUtil;
+import kotlin.NotImplementedError;
 import open_im_sdk.Open_im_sdk;
 
 /**
@@ -32,6 +34,8 @@ public class GroupManager {
     public void setOnGroupListener(OnGroupListener listener) {
         //todo
         if (IMConfig.getInstance().useNativeImpl) {
+//            throw new NotImplementedError();
+            LogcatHelper.logDInDebug("setOnGroupListener not implemented yet.");
             return;
         }
         Open_im_sdk.setGroupListener(new _GroupListener(listener));
@@ -128,8 +132,7 @@ public class GroupManager {
     /**
      * 设置或更新群资料
      * <p>
-     * * @param groupID      群ID * @param groupName    群名称 * @param faceURL      群icon * @param notification 群公告 * @param introduction 群简介 * @param ex
-     * 其他信息
+     * * @param groupID      群ID * @param groupName    群名称 * @param faceURL      群icon * @param notification 群公告 * @param introduction 群简介 * @param ex 其他信息
      */
     public void setGroupInfo(GroupInfo groupInfo, OnBase<String> callBack) {
         Open_im_sdk.setGroupInfo(BaseImpl.stringBase(callBack), ParamsUtil.buildOperationID(), JsonUtil.toString(groupInfo));

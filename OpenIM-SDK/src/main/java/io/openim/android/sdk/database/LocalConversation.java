@@ -18,7 +18,7 @@ public class LocalConversation implements Serializable {
     public int conversationType;
 
     @ColumnInfo(name = "user_id")
-    public String UserID;
+    public String userID;
 
     @ColumnInfo(name = "group_id")
     public String groupID;
@@ -42,7 +42,7 @@ public class LocalConversation implements Serializable {
     public String latestMsg;
 
     @ColumnInfo(name = "latest_msg_send_time", index = true)
-    public int latestMsgSendTime;
+    public long latestMsgSendTime;
 
     @ColumnInfo(name = "draft_text")
     public String draftText;
@@ -85,4 +85,9 @@ public class LocalConversation implements Serializable {
 
     @ColumnInfo(name = "is_msg_destruct")
     public boolean isMsgDestruct;
+
+    @NonNull
+    public String getConversationID() {
+        return conversationID;
+    }
 }

@@ -1,0 +1,139 @@
+//https://github.com/openimsdk/protocol/blob/025d631f99c2a5de6074aec5543df8e63e06f2fa/sdkws/sdkws.proto
+//protoc: 3.21.12
+//生成命令：protoc --java_out=lite:./src/main/java ./src/main/proto/sdkws.proto
+
+syntax = "proto3";
+package openim.sdkws;
+option java_multiple_files = true;
+option java_package = "io.openim.android.sdk.protos.sdkws";
+
+
+
+message UserInfo{
+    string userID = 1;
+    string nickname = 2;
+    string faceURL = 3;
+    string ex = 4;
+    int64 createTime = 5;
+    int32 appMangerLevel = 6;
+    int32 globalRecvMsgOpt = 7;
+}
+
+
+message GetMaxSeqReq {
+    string userID = 1;
+}
+
+message GetMaxSeqResp {
+    map<string, int64> maxSeqs = 1;
+    map<string, int64> minSeqs = 2;
+}
+
+
+
+enum PullOrder{
+    PullOrderAsc = 0;
+    PullOrderDesc = 1;
+
+}
+
+message PullMessageBySeqsReq{
+    string userID = 1;
+    repeated SeqRange seqRanges = 2;
+    PullOrder order = 3;
+}
+
+message SeqRange {
+    string conversationID = 1;
+    int64 begin = 2;
+    int64 end = 3;
+    int64 num = 4;
+}
+
+message PushMessages{
+    map<string, PullMsgs> msgs = 1;
+    map<string, PullMsgs> notificationMsgs = 2;
+}
+
+message PullMsgs {
+    repeated MsgData Msgs = 1;
+    bool isEnd = 2;
+}
+
+message PullMessageBySeqsResp {
+    map<string, PullMsgs> msgs = 1;
+    map<string, PullMsgs> notificationMsgs = 2;
+}
+
+message MsgData {
+    string  sendID = 1;
+    string  recvID = 2;
+    string groupID = 3;
+    string clientMsgID = 4;
+    string serverMsgID = 5;
+    int32 senderPlatformID = 6;
+    string  senderNickname = 7;
+    string  senderFaceURL = 8;
+    int32   sessionType = 9;
+    int32 msgFrom = 10;
+    int32 contentType = 11;
+    bytes content = 12;
+    int64 seq = 14;
+    int64 sendTime = 15;
+    int64 createTime = 16;
+    int32 status = 17;
+    bool isRead = 18;
+    map<string, bool> options = 19;
+    OfflinePushInfo offlinePushInfo = 20;
+    repeated string atUserIDList = 21;
+    string attachedInfo = 22;
+    string ex = 23;
+}
+
+message OfflinePushInfo{
+    string title = 1;
+    string desc = 2;
+    string ex = 3;
+    string iOSPushSound = 4;
+    bool iOSBadgeCount = 5;
+    string signalInfo = 6;
+}
+
+message UserSendMsgResp {
+    string serverMsgID = 1;
+    string clientMsgID = 2;
+    int64  sendTime = 3;
+}
+
+
+//////////////////////conversation/////////////////////
+message ConversationUpdateTips{
+    string userID = 1;
+    repeated string conversationIDList = 2;
+}
+
+message ConversationHasReadTips {
+    string userID = 1;
+    string conversationID = 2;
+    int64 hasReadSeq = 3;
+    int64 unreadCountTime = 4;
+}
+
+message ClearConversationTips {
+    string userID = 1;
+    repeated string conversationIDs = 2;
+}
+
+
+message MarkAsReadTips {
+    string markAsReadUserID = 1;
+    string conversationID = 2;
+    repeated int64 seqs = 3;
+    int64 hasReadSeq = 4;
+}
+
+message DeleteMsgsTips {
+    string userID = 1;
+    string conversationID = 2;
+    repeated int64 seqs = 3;
+}

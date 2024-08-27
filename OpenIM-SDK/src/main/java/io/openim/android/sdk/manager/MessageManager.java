@@ -4,7 +4,13 @@ package io.openim.android.sdk.manager;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 
+import io.openim.android.sdk.common.SdkException;
 import io.openim.android.sdk.config.IMConfig;
+import io.openim.android.sdk.connection.ConnectionManager;
+import io.openim.android.sdk.conversation.Conversation;
+import io.openim.android.sdk.conversation.Sdk;
+import io.openim.android.sdk.internal.log.LogcatHelper;
+import io.openim.android.sdk.models.GetAdvancedHistoryMessageListParams;
 import java.util.List;
 import java.util.Map;
 
@@ -51,8 +57,8 @@ public class MessageManager {
      * 当对方撤回条消息：onRecvMessageRevoked，通过回调将界面已显示的消息替换为"xx撤回了一套消息" 当对方阅读了消息：onRecvC2CReadReceipt，通过回调将已读的消息更改状态。 新增消息：onRecvNewMessage，向界面添加消息
      */
     public void setAdvancedMsgListener(OnAdvanceMsgListener listener) {
-        //todo: impl
         if (IMConfig.getInstance().useNativeImpl) {
+            Conversation.getInstance().setMsgListener(listener);
             return;
         }
         Open_im_sdk.setAdvancedMsgListener(new _AdvanceMsgListener(listener));
@@ -72,8 +78,13 @@ public class MessageManager {
     }
 
     public void sendMessage(OnMsgSendCallback base, Message message, String recvUid, String recvGid, OfflinePushInfo offlinePushInfo, boolean isOnlineOnly) {
-        //todo: impl
         if (IMConfig.getInstance().useNativeImpl) {
+            var returnWithErr = Sdk.sendMessage(base, message, recvUid, recvGid, offlinePushInfo, isOnlineOnly);
+            if (returnWithErr.hasError()) {
+                CommonUtil.returnError(base, returnWithErr.getError().getCode(), returnWithErr.getError().getMessage());
+            } else {
+                CommonUtil.runMainThread(() -> base.onSuccess(returnWithErr.getPayload()));
+            }
             return;
         }
         Open_im_sdk.sendMessage(new _MsgSendProgressListener(base), ParamsUtil.buildOperationID(), JsonUtil.toString(message), recvUid, recvGid,
@@ -134,8 +145,9 @@ public class MessageManager {
      */
     @Deprecated
     public void markMessagesAsReadByMsgID(String conversationID, List<String> clientMsgIDs, OnBase<String> callBack) {
-        //todo: impl
         if (IMConfig.getInstance().useNativeImpl) {
+            LogcatHelper.logDInDebug("deprecated, please use ConversationManager.markGroupMessageHasRead instead");
+            CommonUtil.returnError(callBack, SdkException.sdkUnknownErrCode, "deprecated, please use ConversationManager.markGroupMessageHasRead instead");
             return;
         }
         Open_im_sdk.markMessagesAsReadByMsgID(BaseImpl.stringBase(callBack), ParamsUtil.buildOperationID(), conversationID, JsonUtil.toString(clientMsgIDs));
@@ -167,9 +179,13 @@ public class MessageManager {
      * @return {@link Message}
      */
     public Message createTextMessage(String text) {
-        //todo: impl
         if (IMConfig.getInstance().useNativeImpl) {
-            return null;
+            var returnWithSdkErr = Sdk.createTextMessage(text);
+            if (returnWithSdkErr.hasError()) {
+                return null;
+            } else {
+                return returnWithSdkErr.getPayload();
+            }
         }
         return parse(Open_im_sdk.createTextMessage(ParamsUtil.buildOperationID(), text));
     }
@@ -454,18 +470,34 @@ public class MessageManager {
      * @param callBack callback <{@link AdvancedMessage}>
      */
     public void getAdvancedHistoryMessageList(OnBase<AdvancedMessage> callBack, String conversationID, Message startMsg, int count) {
-        //todo: impl
-        if (IMConfig.getInstance().useNativeImpl) {
-            return;
-        }
+
         isClearSeq(conversationID);
         Map<String, Object> map = new ArrayMap<>();
+        GetAdvancedHistoryMessageListParams getAdvancedHistoryMessageListParams = new GetAdvancedHistoryMessageListParams(MessageManager.this.lastMinSeq,
+            conversationID, count);
         map.put("lastMinSeq", MessageManager.this.lastMinSeq);
         map.put("conversationID", conversationID);
         if (null != startMsg) {
             map.put("startClientMsgID", startMsg.getClientMsgID());
+            getAdvancedHistoryMessageListParams.setStartClientMsgID(startMsg.getClientMsgID());
         }
         map.put("count", count);
+
+        if (IMConfig.getInstance().useNativeImpl) {
+            var returnWithErr = Sdk.getAdvancedHistoryMessageList(getAdvancedHistoryMessageListParams);
+            if (returnWithErr.hasError()) {
+                CommonUtil.returnError(callBack, returnWithErr.getError().getCode(), returnWithErr.getError().getMessage());
+            } else {
+                var messageListSeq = returnWithErr.getPayload();
+                MessageManager.this.lastMinSeq = messageListSeq.getLastMinSeq();
+                CommonUtil.runMainThread(() -> {
+                    if (null != callBack) {
+                        callBack.onSuccess(messageListSeq);
+                    }
+                });
+            }
+            return;
+        }
 
         Open_im_sdk.getAdvancedHistoryMessageList(new Base() {
             @Override
@@ -487,10 +519,6 @@ public class MessageManager {
     }
 
     private void isClearSeq(String conversationID) {
-        //todo: impl
-        if (IMConfig.getInstance().useNativeImpl) {
-            return;
-        }
         if (!TextUtils.equals(lastConversationID, conversationID)) {
             lastMinSeq = 0;
         }

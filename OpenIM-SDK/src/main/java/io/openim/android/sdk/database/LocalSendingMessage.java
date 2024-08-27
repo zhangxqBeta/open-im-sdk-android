@@ -20,4 +20,8 @@ public class LocalSendingMessage implements Serializable {
     @ColumnInfo(name = "ex")
     public String ex;
 
+    public LocalSendingMessage(@NonNull String conversationID, @NonNull String clientMsgID) {
+        this.conversationID = conversationID;
+        this.clientMsgID = clientMsgID;
+    }
 }

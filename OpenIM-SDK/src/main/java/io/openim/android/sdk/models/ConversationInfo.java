@@ -3,6 +3,7 @@ package io.openim.android.sdk.models;
 import java.util.Objects;
 
 public class ConversationInfo {
+
     /**
      * 会话id
      */
@@ -28,10 +29,7 @@ public class ConversationInfo {
      */
     private String faceURL;
     /**
-     * 接收消息选项：<br/>
-     * 0:在线正常接收消息，离线时进行推送 <br/>
-     * 1:不会接收到消息<br/>
-     * 2:在线正常接收消息，离线不会有推送
+     * 接收消息选项：<br/> 0:在线正常接收消息，离线时进行推送 <br/> 1:不会接收到消息<br/> 2:在线正常接收消息，离线不会有推送
      */
     private int recvMsgOpt;
     /**
@@ -85,11 +83,11 @@ public class ConversationInfo {
     private int burnDuration;
 
     /**
-     *  定期删除时间
+     * 定期删除时间
      */
     private long msgDestructTime;
     /**
-     *  开启定期删除时间
+     * 开启定期删除时间
      */
     private boolean isMsgDestruct;
 
@@ -263,8 +261,10 @@ public class ConversationInfo {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof ConversationInfo)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof ConversationInfo))
+            return false;
         ConversationInfo that = (ConversationInfo) o;
         return Objects.equals(conversationID, that.conversationID);
     }

@@ -1,6 +1,12 @@
 package io.openim.android.sdk.manager;
 
+import io.openim.android.sdk.common.SdkException;
 import io.openim.android.sdk.config.IMConfig;
+import io.openim.android.sdk.conversation.Conversation;
+import io.openim.android.sdk.conversation.ReadDrawing;
+import io.openim.android.sdk.conversation.Sdk;
+import io.openim.android.sdk.utils.CommonUtil;
+import io.openim.android.sdk.utils.ConvertUtil;
 import java.util.Comparator;
 import java.util.List;
 
@@ -12,6 +18,7 @@ import io.openim.android.sdk.models.ConversationInfo;
 import io.openim.android.sdk.models.NotDisturbInfo;
 import io.openim.android.sdk.utils.JsonUtil;
 import io.openim.android.sdk.utils.ParamsUtil;
+import kotlin.NotImplementedError;
 import open_im_sdk.Open_im_sdk;
 
 
@@ -26,8 +33,8 @@ public class ConversationManager {
      * 启动app时主动拉取一次会话记录，后续会话改变可以根据监听器回调再刷新数据
      */
     public void setOnConversationListener(OnConversationListener listener) {
-        //todo: impl
         if (IMConfig.getInstance().useNativeImpl) {
+            Conversation.getInstance().setOnConversationListener(listener);
             return;
         }
         Open_im_sdk.setConversationListener(new _ConversationListener(listener));
@@ -39,6 +46,9 @@ public class ConversationManager {
      * @param base callback List<{@link ConversationInfo}>
      */
     public void getAllConversationList(OnBase<List<ConversationInfo>> base) {
+        if (IMConfig.getInstance().useNativeImpl) {
+            throw new NotImplementedError();
+        }
         Open_im_sdk.getAllConversationList(BaseImpl.arrayBase(base, ConversationInfo.class), ParamsUtil.buildOperationID());
     }
 
@@ -61,8 +71,14 @@ public class ConversationManager {
      * @param base callback {@link ConversationInfo}
      */
     public void getOneConversation(OnBase<ConversationInfo> base, String sourceId, int sessionType) {
-        //todo: impl
         if (IMConfig.getInstance().useNativeImpl) {
+            var returnWithErr = Conversation.getOneConversation(sessionType, sourceId);
+            if (returnWithErr.hasError()) {
+                CommonUtil.returnError(base, SdkException.sdkUnknownErrCode, returnWithErr.getError().getMessage());
+            } else {
+                var payload = returnWithErr.getPayload();
+                CommonUtil.runMainThread(() -> base.onSuccess(ConvertUtil.convertToConversationInfo(payload)));
+            }
             return;
         }
         Open_im_sdk.getOneConversation(BaseImpl.objectBase(base, ConversationInfo.class), ParamsUtil.buildOperationID(), sessionType, sourceId);
@@ -111,15 +127,20 @@ public class ConversationManager {
     /**
      * 标记群组会话已读
      *
-     * @param groupID 群组ID
+     * @param groupOrConversationID 群组ID or 会话ID
      * @param base callback String
      */
-    public void markGroupMessageHasRead(OnBase<String> base, String groupID) {
-        //todo: impl
+    public void markGroupMessageHasRead(OnBase<String> base, String groupOrConversationID) {
         if (IMConfig.getInstance().useNativeImpl) {
+            var sdkException = ReadDrawing.markConversationMessageAsRead(groupOrConversationID);
+            if (sdkException == null) {
+                CommonUtil.returnSuccess(base, null);
+            } else {
+                CommonUtil.returnError(base, sdkException.getCode(), sdkException.getMessage());
+            }
             return;
         }
-        Open_im_sdk.markConversationMessageAsRead(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), groupID);
+        Open_im_sdk.markConversationMessageAsRead(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), groupOrConversationID);
     }
 
     /**
@@ -177,8 +198,13 @@ public class ConversationManager {
     }
 
     public void deleteConversationAndDeleteAllMsg(OnBase<String> base, String conversionID) {
-        //todo: impl
         if (IMConfig.getInstance().useNativeImpl) {
+            var sdkErr = Sdk.DeleteConversationAndDeleteAllMsg(conversionID);
+            if (sdkErr != null) {
+                CommonUtil.returnError(base, sdkErr.getCode(), sdkErr.getMessage());
+            } else {
+                CommonUtil.returnSuccess(base, null);
+            }
             return;
         }
         Open_im_sdk.deleteConversationAndDeleteAllMsg(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), conversionID);

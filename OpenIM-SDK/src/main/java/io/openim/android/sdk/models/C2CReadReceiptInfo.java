@@ -3,6 +3,7 @@ package io.openim.android.sdk.models;
 import java.util.List;
 
 public class C2CReadReceiptInfo {
+
     /**
      * 用户id
      */
@@ -24,28 +25,24 @@ public class C2CReadReceiptInfo {
      */
     private int msgFrom;
     /**
-     * {@link io.openim.android.sdk.enums.MessageType}
-     * 消息类型：
-     * 101:文本消息
-     * 102:图片消息
-     * 103:语音消息
-     * 104:视频消息
-     * 105:文件消息
-     * 106:@消息
-     * 107:合并消息
-     * 108:转发消息
-     * 109:位置消息
-     * 110:自定义消息
-     * 111:撤回消息回执
-     * 112:C2C已读回执
-     * 113:正在输入状态
+     * {@link io.openim.android.sdk.enums.MessageType} 消息类型： 101:文本消息 102:图片消息 103:语音消息 104:视频消息 105:文件消息 106:@消息 107:合并消息 108:转发消息 109:位置消息 110:自定义消息
+     * 111:撤回消息回执 112:C2C已读回执 113:正在输入状态
      */
     private int contentType;
     /**
-     * {@link io.openim.android.sdk.enums.ConversationType}
-     * 会话类型 1:单聊 2:群聊
+     * {@link io.openim.android.sdk.enums.ConversationType} 会话类型 1:单聊 2:群聊
      */
     private int sessionType;
+
+    public C2CReadReceiptInfo() {
+    }
+
+    public C2CReadReceiptInfo(String userID, List<String> msgIDList, int sessionType, long readTime) {
+        this.userID = userID;
+        this.msgIDList = msgIDList;
+        this.readTime = readTime;
+        this.sessionType = sessionType;
+    }
 
     public String getUserID() {
         return userID;

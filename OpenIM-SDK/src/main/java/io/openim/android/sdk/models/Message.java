@@ -3,7 +3,8 @@ package io.openim.android.sdk.models;
 import java.util.Map;
 import java.util.Objects;
 
-public class Message {
+public class Message implements Comparable<Message> {
+
     /**
      * 消息唯一ID
      */
@@ -37,26 +38,12 @@ public class Message {
      */
     private int msgFrom;
     /**
-     * {@link io.openim.android.sdk.enums.MessageType}
-     * 消息类型：<br/>
-     * 101:文本消息<br/>
-     * 102:图片消息<br/>
-     * 103:语音消息<br/>
-     * 104:视频消息<br/>
-     * 105:文件消息<br/>
-     * 106:@消息<br/>
-     * 107:合并消息<br/>
-     * 108:转发消息<br/>
-     * 109:位置消息<br/>
-     * 110:自定义消息<br/>
-     * 111:撤回消息回执<br/>
-     * 112:C2C已读回执<br/>
-     * 113:正在输入状态
+     * {@link io.openim.android.sdk.enums.MessageType} 消息类型：<br/> 101:文本消息<br/> 102:图片消息<br/> 103:语音消息<br/> 104:视频消息<br/> 105:文件消息<br/> 106:@消息<br/>
+     * 107:合并消息<br/> 108:转发消息<br/> 109:位置消息<br/> 110:自定义消息<br/> 111:撤回消息回执<br/> 112:C2C已读回执<br/> 113:正在输入状态
      */
     private int contentType;
     /**
-     * {@link io.openim.android.sdk.enums.Platform}
-     * 平台类型 1:ios 2:android 3:windows 4:osx 5:web 6:mini 7:linux
+     * {@link io.openim.android.sdk.enums.Platform} 平台类型 1:ios 2:android 3:windows 4:osx 5:web 6:mini 7:linux
      */
     private int platformID;
     /**
@@ -74,7 +61,7 @@ public class Message {
     /**
      * 消息内容
      */
-//    private String content;
+    private String content;
     /**
      * 消息唯一序列号
      */
@@ -84,8 +71,7 @@ public class Message {
      */
     private boolean isRead;
     /**
-     * {@link io.openim.android.sdk.enums.MessageStatus}
-     * 消息状态 1:发送中 2:发送成功 3:发送失败 4:已删除 5:已撤回
+     * {@link io.openim.android.sdk.enums.MessageStatus} 消息状态 1:发送中 2:发送成功 3:发送失败 4:已删除 5:已撤回
      */
     private int status;
 
@@ -170,6 +156,7 @@ public class Message {
 
     ///
     private TypingElem typingElem;
+
 
     public String getClientMsgID() {
         return clientMsgID;
@@ -475,10 +462,22 @@ public class Message {
         this.typingElem = typingElem;
     }
 
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Message)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Message)) {
+            return false;
+        }
         Message message = (Message) o;
         return Objects.equals(clientMsgID, message.clientMsgID);
     }
@@ -486,6 +485,11 @@ public class Message {
     @Override
     public int hashCode() {
         return Objects.hash(clientMsgID);
+    }
+
+    @Override
+    public int compareTo(Message o) {
+        return (int) (this.sendTime - o.sendTime);
     }
 }
 

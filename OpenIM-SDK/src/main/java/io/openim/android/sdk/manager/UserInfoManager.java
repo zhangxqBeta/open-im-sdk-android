@@ -4,6 +4,7 @@ import android.util.ArrayMap;
 
 
 import io.openim.android.sdk.config.IMConfig;
+import io.openim.android.sdk.internal.log.LogcatHelper;
 import java.util.List;
 import java.util.Map;
 
@@ -25,8 +26,8 @@ public class UserInfoManager {
      * 设置当前用户资料变更监听器
      */
     public void setOnUserListener(OnUserListener listener) {
-        //todo
         if (IMConfig.getInstance().useNativeImpl) {
+            LogcatHelper.logDInDebug("setOnUserListener not needed for construct.");
             return;
         }
         Open_im_sdk.setUserListener(new _UserListener(listener));

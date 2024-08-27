@@ -1,5 +1,6 @@
 package io.openim.android.sdk.connection;
 
+import io.openim.android.sdk.listener.OnAdvanceMsgListener;
 import io.openim.android.sdk.listener.OnConnListener;
 import io.openim.android.sdk.utils.AsyncUtils;
 import io.openim.android.sdk.utils.RunnableWrapper;
@@ -11,6 +12,9 @@ public class ConnectionManager implements OnConnListener {
 
     private final Connection connection;
     public List<OnConnListener> connectionListeners = new ArrayDeque<>();
+
+    private boolean isBackground;
+
 
     public static ConnectionManager getInstance() {
         return SingletonHolder.instance;
@@ -30,12 +34,24 @@ public class ConnectionManager implements OnConnListener {
         }
     }
 
+    public boolean isBackground() {
+        return isBackground;
+    }
+
+    public void setBackground(boolean background) {
+        isBackground = background;
+    }
+
     public void disConnect() {
         connection.disconnect();
     }
 
     public void connect() {
         connection.connectToServer();
+    }
+
+    public boolean isConnected() {
+        return connection.isConnected();
     }
 
     @Override
@@ -52,6 +68,10 @@ public class ConnectionManager implements OnConnListener {
                 }
             }
         }));
+    }
+
+    public Connection getConnection() {
+        return connection;
     }
 
     public void addConnectionListener(OnConnListener connectionListener) {

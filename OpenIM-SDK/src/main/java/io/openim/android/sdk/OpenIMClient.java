@@ -15,10 +15,26 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
+import io.openim.android.sdk.common.Cmd2Value;
+import io.openim.android.sdk.common.SdkException;
 import io.openim.android.sdk.config.IMConfig;
 import io.openim.android.sdk.connection.ConnectionManager;
+import io.openim.android.sdk.conversation.Conversation;
 import io.openim.android.sdk.database.ChatDbManager;
+import io.openim.android.sdk.database.ChatLog;
+import io.openim.android.sdk.database.LocalSendingMessage;
+import io.openim.android.sdk.enums.Constants;
+import io.openim.android.sdk.enums.LoginStatus;
+import io.openim.android.sdk.enums.ReqIdentifier;
+import io.openim.android.sdk.handler.MsgSyncer;
+import io.openim.android.sdk.internal.user.User;
+import io.openim.android.sdk.models.Message;
+import io.openim.android.sdk.protos.push.DelUserPushTokenReq;
+import io.openim.android.sdk.protos.push.DelUserPushTokenResp;
+import io.openim.android.sdk.utils.AsyncUtils;
 import io.openim.android.sdk.utils.SpUtils;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -62,6 +78,14 @@ public class OpenIMClient {
     /*native impl*/
     private OnConnListener connListener;
 
+    /*native impl*/
+    private int loginStatus;
+
+    private BlockingQueue<Cmd2Value> conversationCh;
+    //    private BlockingQueue<Cmd2Value> heartbeatCmdCh;
+    private BlockingQueue<Cmd2Value> pushMsgAndMaxSeqCh;
+    private BlockingQueue<Cmd2Value> loginMgrCh;
+
     private OpenIMClient() {
         conversationManager = new ConversationManager();
         friendshipManager = new FriendshipManager();
@@ -69,6 +93,7 @@ public class OpenIMClient {
         messageManager = new MessageManager();
         userInfoManager = new UserInfoManager();
         imConfig = IMConfig.getInstance();
+
     }
 
     private static class Singleton {
@@ -107,8 +132,47 @@ public class OpenIMClient {
 
     private boolean initSDKNativeImpl(@NotNull OnConnListener listener) {
         connListener = listener;
-        //todo
+        initResources();
         return true;
+    }
+
+    private void initResources() {
+        conversationCh = new LinkedBlockingQueue<>(1000);
+//        heartbeatCmdCh = new LinkedBlockingQueue<>(10);
+        pushMsgAndMaxSeqCh = new LinkedBlockingQueue<>(1000);
+        loginMgrCh = new LinkedBlockingQueue<>(1);
+//        var chatDbManager = ChatDbManager.getInstance();
+//        chatDbManager.init(app, IMConfig.getInstance().userID);
+
+        //channel
+        setLoginStatus(LoginStatus.Logout);
+    }
+
+    public BlockingQueue<Cmd2Value> getConversationCh() {
+        return conversationCh;
+    }
+
+    public void setConversationCh(
+        BlockingQueue<Cmd2Value> conversationCh) {
+        this.conversationCh = conversationCh;
+    }
+
+    public BlockingQueue<Cmd2Value> getPushMsgAndMaxSeqCh() {
+        return pushMsgAndMaxSeqCh;
+    }
+
+    public void setPushMsgAndMaxSeqCh(
+        BlockingQueue<Cmd2Value> pushMsgAndMaxSeqCh) {
+        this.pushMsgAndMaxSeqCh = pushMsgAndMaxSeqCh;
+    }
+
+    public BlockingQueue<Cmd2Value> getLoginMgrCh() {
+        return loginMgrCh;
+    }
+
+    public void setLoginMgrCh(
+        BlockingQueue<Cmd2Value> loginMgrCh) {
+        this.loginMgrCh = loginMgrCh;
     }
 
     public void unInit() {
@@ -190,17 +254,33 @@ public class OpenIMClient {
      */
     public void login(@NotNull OnBase<String> base, String uid, String token) {
         if (imConfig.useNativeImpl) {
+            if (getLoginStatus() == LoginStatus.Logged) {
+                CommonUtil.returnError(base, SdkException.ErrLoginRepeat.getCode(), SdkException.ErrLoginRepeat.getMessage());
+                return;
+            }
+
+            setLoginStatus(LoginStatus.Logging);
+
             imConfig.userID = uid;
             imConfig.token = token;
             SpUtils.putToken(token);
             SpUtils.putUid(uid);
-            //init db
-            var chatDbManager = ChatDbManager.getInstance();
-            chatDbManager.init(app, uid);
-            chatDbManager.checkSendingMessage();
-            
             //init ws
             ConnectionManager.getInstance().connect();
+
+            //init db, move to init
+            var chatDbManager = ChatDbManager.getInstance();
+            chatDbManager.init(app, uid);
+            checkSendingMessage();
+            // golang impl:
+            // u.user = user.NewUser(u.db, u.loginUserID, u.conversationCh)
+            User.getInstance().initSyncer();
+            //invoke loadSeq internally
+            MsgSyncer.getInstance().loadSeq();
+
+            run();
+            setLoginStatus(LoginStatus.Logged);
+            CommonUtil.returnSuccess(base, "");
             return;
         }
 
@@ -221,12 +301,112 @@ public class OpenIMClient {
         }, ParamsUtil.buildOperationID(), uid, token);
     }
 
+    private void run() {
+        // golang impl:u.longConnMgr.Run(ctx)
+        //go c.readPump(ctx)
+        //	go c.writePump(ctx)
+        //	go c.heartbeat(ctx)
+        // has been implemented in java Connection.
+
+        AsyncUtils.runOnListenerThread(() -> {
+            MsgSyncer.getInstance().doListener();
+        });
+        AsyncUtils.runOnListenerThread(() -> {
+            //golang impl:	go common.DoListener(u.conversation, u.ctx)
+            Conversation.getInstance().doListener();
+        });
+
+        //golang impl: go u.group.DeleteGroupAndMemberInfo(ctx)
+
+        AsyncUtils.runOnListenerThread(() -> {
+            //golang impl:	go common.DoListener(u.conversation, u.ctx)
+            logoutListener();
+        });
+    }
+
+    public void logoutListener() {
+        while (true) {
+            try {
+                Cmd2Value cmd = loginMgrCh.take();
+                logout(new OnBase<String>() {
+                    @Override
+                    public void onError(int code, String error) {
+                        OnBase.super.onError(code, error);
+                    }
+
+                    @Override
+                    public void onSuccess(String data) {
+                        OnBase.super.onSuccess(data);
+                    }
+                });
+            } catch (InterruptedException e) {
+
+            }
+        }
+    }
+
+    /**
+     * native impl. golang impl: returned error, however, it's not handled upper-level; so return void in java
+     */
+    private void checkSendingMessage() {
+        var localSendingMessageDao = ChatDbManager.getInstance().getImDatabase().localSendingMessageDao();
+        var sendingMessages = localSendingMessageDao.getAll();
+        for (var message : sendingMessages) {
+            handlerSendingMsg(message);
+            localSendingMessageDao.delete(new LocalSendingMessage(message.conversationID, message.clientMsgID));
+        }
+    }
+
+    /**
+     * native impl.
+     */
+    private void handlerSendingMsg(LocalSendingMessage sendingMsg) {
+        var imDatabase = ChatDbManager.getInstance().getImDatabase();
+        var localChatLogDao = imDatabase.chatLogDao();
+        var localConversationDao = imDatabase.localConversationDao();
+        var tableMessage = localChatLogDao.getMessage(sendingMsg.conversationID, sendingMsg.clientMsgID);
+        if (tableMessage == null) {
+            return;
+        }
+        if (tableMessage.status != Constants.MSG_STATUS_SENDING) {
+            return;
+        }
+
+        var localChatLog = new ChatLog();
+        localChatLog.conversationID = sendingMsg.conversationID;
+        localChatLog.clientMsgID = sendingMsg.clientMsgID;
+        localChatLog.status = Constants.MSG_STATUS_SEND_FAILED;
+        int rowsAffected = localChatLogDao.update(localChatLog);
+        if (rowsAffected == 0) {
+            return;
+        }
+
+        var conversation = localConversationDao.getConversation(sendingMsg.conversationID);
+        var latestMsg = JsonUtil.toObj(conversation.latestMsg, Message.class);
+        if (latestMsg.getClientMsgID().equals(sendingMsg.clientMsgID)) {
+            latestMsg.setStatus(Constants.MSG_STATUS_SEND_FAILED);
+            conversation.latestMsg = JsonUtil.toString(latestMsg);
+            localConversationDao.update(conversation);
+        }
+
+    }
 
     /**
      * 登出
      */
     public void logout(OnBase<String> base) {
+        if (imConfig.useNativeImpl) {
+            var delUserPushTokenReq = DelUserPushTokenReq.newBuilder().setUserID(imConfig.userID).setPlatformID(imConfig.platformID).build();
+            ConnectionManager.getInstance().getConnection().sendReqWaitResp(ReqIdentifier.LOGOUT_MSG, delUserPushTokenReq, DelUserPushTokenResp.parser());
+            setLoginStatus(LoginStatus.Logout);
+            CommonUtil.returnSuccess(base, null);
+            return;
+        }
         Open_im_sdk.logout(BaseImpl.stringBase(base), ParamsUtil.buildOperationID());
+    }
+
+    protected void setLoginStatus(int status) {
+        loginStatus = status;
     }
 
     /**

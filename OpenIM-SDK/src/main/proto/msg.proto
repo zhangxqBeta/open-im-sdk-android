@@ -1,0 +1,54 @@
+//https://github.com/openimsdk/protocol/blob/025d631f99c2a5de6074aec5543df8e63e06f2fa/msg/msg.proto
+//protoc: 3.21.12
+//生成命令：
+// protoc --java_out=lite:./src/main/java ./src/main/proto/msg.proto
+
+syntax = "proto3";
+package openim.msg;
+option java_multiple_files = true;
+option java_package = "io.openim.android.sdk.protos.msg";
+
+message GetConversationsHasReadAndMaxSeqReq {
+    string userID = 1;
+    repeated string conversationIDs = 2;
+}
+
+message Seqs {
+    int64 maxSeq = 1;
+    int64 hasReadSeq = 2;
+}
+
+message GetConversationsHasReadAndMaxSeqResp {
+    map<string, Seqs> seqs = 1;
+}
+
+message SetConversationHasReadSeqReq {
+    string conversationID = 1;
+    string userID = 2;
+    int64 hasReadSeq = 3;
+}
+
+message MarkConversationAsReadReq {
+    string conversationID = 1;
+    string userID = 2;
+    int64 hasReadSeq = 3;
+    repeated int64 seqs = 4;
+}
+
+message MarkConversationAsReadResp {
+}
+
+message DeleteSyncOpt {
+    bool IsSyncSelf = 3;
+    bool IsSyncOther = 4;
+}
+
+
+message ClearConversationsMsgReq {
+    repeated string conversationIDs = 1;
+    string userID = 2;
+    DeleteSyncOpt deleteSyncOpt = 3;
+}
+
+message ClearConversationsMsgResp {
+}

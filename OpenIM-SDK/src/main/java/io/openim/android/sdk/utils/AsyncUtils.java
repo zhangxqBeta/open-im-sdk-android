@@ -13,6 +13,8 @@ public class AsyncUtils {
 
     private static ExecutorService connectExecutor = Executors.newSingleThreadExecutor(new ImThreadFactory());
 
+    private static ExecutorService listenerExecutor = Executors.newFixedThreadPool(10);
+
 
     public static void runOnUiThread(RunnableWrapper wrapper) {
         mHandler.post(wrapper);
@@ -22,10 +24,14 @@ public class AsyncUtils {
         connectExecutor.submit(runnable);
     }
 
+    public static void runOnListenerThread(Runnable runnable) {
+        listenerExecutor.submit(runnable);
+    }
+
 
     private static class ImThreadFactory implements ThreadFactory {
 
-        private static final AtomicInteger threadNumber = new AtomicInteger(1);
+        private static final AtomicInteger threadNumber = new AtomicInteger(10);
 
 
         @Override
