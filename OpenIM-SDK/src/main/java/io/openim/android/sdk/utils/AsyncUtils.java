@@ -12,8 +12,10 @@ public class AsyncUtils {
     private static Handler mHandler = new Handler(Looper.getMainLooper());
 
     private static ExecutorService connectExecutor = Executors.newSingleThreadExecutor(new ImThreadFactory());
-
+    
     private static ExecutorService listenerExecutor = Executors.newFixedThreadPool(10);
+
+    private static ExecutorService httpAPIExecutor = Executors.newFixedThreadPool(5);
 
 
     public static void runOnUiThread(RunnableWrapper wrapper) {
@@ -26,6 +28,10 @@ public class AsyncUtils {
 
     public static void runOnListenerThread(Runnable runnable) {
         listenerExecutor.submit(runnable);
+    }
+
+    public static void runOnHttpAPIThread(Runnable runnable) {
+        httpAPIExecutor.submit(runnable);
     }
 
 

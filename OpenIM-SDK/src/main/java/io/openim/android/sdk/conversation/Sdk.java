@@ -62,7 +62,7 @@ public class Sdk {
             var imDatabase = ChatDbManager.getInstance().getImDatabase();
             //err !=nil, golang impl
             if (oldMessage == null) {
-                var localMessage = ConvertUtil.convertToLocalChatLog(s);
+                var localMessage = ConvertUtil.msgStructToLocalChatLog(s);
                 localMessage.conversationID = lc.conversationID;
 
                 var id = imDatabase.chatLogDao().insert(localMessage);
@@ -182,7 +182,7 @@ public class Sdk {
         var contentType = s.getContentType();
         if (contentType == MessageType.PICTURE || contentType == MessageType.VOICE || contentType == MessageType.VIDEO || contentType == MessageType.FILE) {
             if (!isOnlineOnly) {
-                var localMessage = ConvertUtil.convertToLocalChatLog(s);
+                var localMessage = ConvertUtil.msgStructToLocalChatLog(s);
                 localMessage.conversationID = lc.conversationID;
                 int affectedRows = ChatDbManager.getInstance().getImDatabase().chatLogDao().update(localMessage);
                 if (affectedRows == 0) {
@@ -327,6 +327,10 @@ public class Sdk {
             temp.setRead(v.isRead);
             temp.setStatus(v.status);
             var attachedInfo = JsonUtil.toObj(v.attachedInfo, AttachedInfoElem.class);
+            //todo: hot fix, removed later
+            if (attachedInfo == null) {
+                continue;
+            }
             temp.setAttachedInfoElem(attachedInfo);
             temp.setEx(v.ex);
             var err = Conversation.msgHandleByContentType(temp);

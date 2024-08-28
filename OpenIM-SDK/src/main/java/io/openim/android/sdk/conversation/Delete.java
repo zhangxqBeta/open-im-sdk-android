@@ -21,7 +21,7 @@ import java.util.function.Function;
 public class Delete {
 
     public static void doClearConversations(MsgData msg) {
-        var tips = JsonUtil.parseNotificationElem(msg.getContent().toString(), ClearConversationTips.class);
+        var tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), ClearConversationTips.class);
         for (var v : tips.getConversationIDsList()) {
             var err = clearConversationAndDeleteAllMsg(v, false, null);
             if (err != null) {
@@ -34,7 +34,7 @@ public class Delete {
     }
 
     public static void doDeleteMsgs(MsgData msg) {
-        var tips = JsonUtil.parseNotificationElem(msg.getContent().toString(), DeleteMsgsTips.class);
+        var tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), DeleteMsgsTips.class);
         for (var v : tips.getSeqsList()) {
             try {
                 var localMsg = ChatDbManager.getInstance().getImDatabase().chatLogDao().getMessageBySeq(tips.getConversationID(), v);
@@ -144,7 +144,8 @@ public class Delete {
     public static Exception clearConversationMsgFromSvr(String conversationID) {
         var apiReq = ClearConversationsMsgReq.newBuilder().setUserID(IMConfig.getInstance().userID).addAllConversationIDs(Arrays.asList(conversationID))
             .build();
-        var returnWithErr = ApiClient.apiPost(ServerApiRouter.ClearConversationMsgRouter, apiReq, null);
+        var jsonReq = ConvertUtil.protobufToJsonStr(apiReq);
+        var returnWithErr = ApiClient.apiPost(ServerApiRouter.ClearConversationMsgRouter, jsonReq, null);
         return returnWithErr.getError();
     }
 }

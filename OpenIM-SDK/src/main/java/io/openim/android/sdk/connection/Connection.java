@@ -315,7 +315,7 @@ public class Connection extends WebSocketClient {
 //                sendWsPingToServer();
                 sendPingToServer();
                 LogcatHelper.logDInDebug("websocket - send ws pingToServer");
-                SystemClock.sleep(10 * PING_PERIOD * 1000);
+                SystemClock.sleep(1 * PING_PERIOD * 1000);
             }
         }
     }

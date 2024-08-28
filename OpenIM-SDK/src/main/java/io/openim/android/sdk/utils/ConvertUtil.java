@@ -1,17 +1,28 @@
 package io.openim.android.sdk.utils;
 
+import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
 import io.openim.android.sdk.database.ChatLog;
 import io.openim.android.sdk.database.LocalConversation;
 import io.openim.android.sdk.database.LocalErrChatLog;
 import io.openim.android.sdk.database.LocalUser;
 import io.openim.android.sdk.enums.ConversationType;
+import io.openim.android.sdk.enums.MessageType;
 import io.openim.android.sdk.models.ConversationInfo;
 import io.openim.android.sdk.models.Message;
 import io.openim.android.sdk.models.OfflinePushInfo;
+import io.openim.android.sdk.protos.conversation.GetAllConversationsReq;
+import io.openim.android.sdk.protos.conversation.GetConversationsReq;
+import io.openim.android.sdk.protos.msg.ClearConversationsMsgReq;
+import io.openim.android.sdk.protos.msg.GetConversationsHasReadAndMaxSeqReq;
+import io.openim.android.sdk.protos.msg.MarkConversationAsReadReq;
+import io.openim.android.sdk.protos.msg.SetConversationHasReadSeqReq;
 import io.openim.android.sdk.protos.sdkws.MsgData;
 import io.openim.android.sdk.protos.sdkws.UserInfo;
+import io.openim.android.sdk.protos.user.GetDesignateUsersReq;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ConvertUtil {
 
@@ -43,7 +54,7 @@ public class ConvertUtil {
         return conversationInfo;
     }
 
-    public static ChatLog convertToLocalChatLog(MsgData msgData) {
+    public static ChatLog msgStructToLocalChatLog(MsgData msgData) {
         ChatLog localChatLog = new ChatLog();
         localChatLog.clientMsgID = msgData.getClientMsgID();
         localChatLog.serverMsgID = msgData.getServerMsgID();
@@ -66,7 +77,7 @@ public class ConvertUtil {
         return localChatLog;
     }
 
-    public static ChatLog convertToLocalChatLog(Message msg) {
+    public static ChatLog msgStructToLocalChatLog(Message msg) {
         ChatLog localChatLog = new ChatLog();
         localChatLog.clientMsgID = msg.getClientMsgID();
         localChatLog.serverMsgID = msg.getServerMsgID();
@@ -87,7 +98,60 @@ public class ConvertUtil {
         localChatLog.ex = msg.getEx().toString();
         localChatLog.isReact = msg.isReact();
         localChatLog.isExternalExtensions = msg.isExternalExtensions();
-        return localChatLog;
+
+        var src = msg;
+        var lc = localChatLog;
+        switch (src.getContentType()) {
+            case MessageType.TEXT:
+                localChatLog.content = JsonUtil.toString(src.getTextElem());
+                break;
+            case MessageType.PICTURE:
+                localChatLog.content = JsonUtil.toString(src.getPictureElem());
+                break;
+            case MessageType.VOICE:
+                localChatLog.content = JsonUtil.toString(src.getSoundElem());
+                break;
+            case MessageType.VIDEO:
+                localChatLog.content = JsonUtil.toString(src.getVideoElem());
+                break;
+            case MessageType.FILE:
+                localChatLog.content = JsonUtil.toString(src.getFileElem());
+                break;
+            case MessageType.AT_TEXT:
+                localChatLog.content = JsonUtil.toString(src.getAtTextElem());
+                break;
+            case MessageType.MERGER:
+                localChatLog.content = JsonUtil.toString(src.getMergeElem());
+                break;
+            case MessageType.CARD:
+                localChatLog.content = JsonUtil.toString(src.getCardElem());
+                break;
+            case MessageType.LOCATION:
+                localChatLog.content = JsonUtil.toString(src.getLocationElem());
+                break;
+            case MessageType.CUSTOM:
+                localChatLog.content = JsonUtil.toString(src.getCustomElem());
+                break;
+            case MessageType.QUOTE:
+                localChatLog.content = JsonUtil.toString(src.getQuoteElem());
+                break;
+            case MessageType.CUSTOM_FACE:
+                localChatLog.content = JsonUtil.toString(src.getFaceElem());
+                break;
+            case MessageType.ADVANCED_TEXT:
+                localChatLog.content = JsonUtil.toString(src.getAdvancedTextElem());
+                break;
+            default:
+                localChatLog.content = JsonUtil.toString(src.getNotificationElem());
+                break;
+        }
+
+        if (src.getSessionType() == ConversationType.GROUP_CHAT || src.getSessionType() == ConversationType.SUPER_GROUP_CHAT) {
+            lc.recvID = src.getGroupID();
+        }
+
+        lc.attachedInfo = JsonUtil.toString(src.getAttachedInfoElem());
+        return lc;
     }
 
     public static LocalErrChatLog convertToLocalErrChatLog(ChatLog msg) {
@@ -213,7 +277,7 @@ public class ConvertUtil {
         message.setSessionType(msg.getSessionType());
         message.setMsgFrom(msg.getMsgFrom());
         message.setContentType(msg.getContentType());
-        message.setContent(msg.getContent().toString());
+        message.setContent(msg.getContent().toStringUtf8());
         message.setSeq((int) msg.getSeq());
         message.setSendTime(msg.getSendTime());
         message.setCreateTime(msg.getCreateTime());
@@ -222,6 +286,7 @@ public class ConvertUtil {
         message.setOfflinePush(convertOfflinePushInfo(msg.getOfflinePushInfo()));
         message.setAttachedInfo(msg.getAttachedInfo());
         message.setEx(msg.getEx());
+        message.setAttachedInfo(msg.getAttachedInfo());
         return message;
     }
 
@@ -287,4 +352,65 @@ public class ConvertUtil {
         return offlinePushInfo;
     }
 
+
+    /*workaround, this is not protobuf-java-util implementation for protobuf-lite */
+
+    public static String protobufToJsonStr(MarkConversationAsReadReq req) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("conversationID", req.getConversationID());
+        map.put("userID", req.getUserID());
+        map.put("hasReadSeq", req.getHasReadSeq());
+        map.put("seqs", req.getSeqsList());
+        return JsonUtil.toString(map);
+    }
+
+
+    public static String protobufToJsonStr(SetConversationHasReadSeqReq req) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("conversationID", req.getConversationID());
+        map.put("userID", req.getUserID());
+        map.put("hasReadSeq", req.getHasReadSeq());
+        return JsonUtil.toString(map);
+    }
+
+    public static String protobufToJsonStr(GetConversationsHasReadAndMaxSeqReq req) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("userID", req.getUserID());
+        map.put("conversationIDs", req.getConversationIDsList());
+        return JsonUtil.toString(map);
+    }
+
+
+    public static String protobufToJsonStr(ClearConversationsMsgReq req) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("userID", req.getUserID());
+        map.put("conversationIDs", req.getConversationIDsList());
+
+        Map<String, Object> deleteSyncOptValue = new HashMap<>();
+        deleteSyncOptValue.put("IsSyncSelf", req.getDeleteSyncOpt().getIsSyncSelf());
+        deleteSyncOptValue.put("IsSyncOther", req.getDeleteSyncOpt().getIsSyncOther());
+
+        map.put("deleteSyncOpt", deleteSyncOptValue);
+        return JsonUtil.toString(map);
+    }
+
+    public static String protobufToJsonStr(GetDesignateUsersReq req) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("userIDs", req.getUserIDsList());
+        return JsonUtil.toString(map);
+    }
+
+
+    public static String protobufToJsonStr(GetAllConversationsReq req) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("ownerUserID", req.getOwnerUserID());
+        return JsonUtil.toString(map);
+    }
+
+    public static String protobufToJsonStr(GetConversationsReq req) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("ownerUserID", req.getOwnerUserID());
+        map.put("conversationIDs", req.getConversationIDsList());
+        return JsonUtil.toString(map);
+    }
 }

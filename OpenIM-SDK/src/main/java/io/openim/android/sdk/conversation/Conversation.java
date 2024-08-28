@@ -2,7 +2,6 @@ package io.openim.android.sdk.conversation;
 
 import io.openim.android.sdk.OpenIMClient;
 import io.openim.android.sdk.common.Cmd2Value;
-import io.openim.android.sdk.common.DeleteConNode;
 import io.openim.android.sdk.common.UpdateConNode;
 import io.openim.android.sdk.config.IMConfig;
 import io.openim.android.sdk.connection.ConnectionManager;
@@ -62,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import open_im_sdk_callback.OnBatchMsgListener;
@@ -144,14 +144,18 @@ public class Conversation {
 
     public void doListener() {
         while (true) {
+            LogcatHelper.logDInDebug(String.format("conversationCh doListener [pulling]"));
             try {
                 //conversationCh
                 Cmd2Value cmd = getConversationCh().take();
-                LogcatHelper.logDInDebug(String.format("conversationCh doListener: %s", cmd));
+                LogcatHelper.logDInDebug(String.format("conversationCh doListener [take]: %s", cmd));
                 work(cmd);
-            } catch (InterruptedException e) {
-
+                LogcatHelper.logDInDebug(String.format("conversationCh doListener [running]"));
+            } catch (Exception e) {
+                LogcatHelper.logDInDebug(String.format("conversationCh doListener exception: %s", e));
             }
+            LogcatHelper.logDInDebug(String.format("conversationCh doListener [end]"));
+
         }
     }
 
@@ -161,7 +165,13 @@ public class Conversation {
                 ConversationNotification.doDeleteConversation(c2v);
                 break;
             case Cmd.CMD_NEW_MSG_COME:
-                doMsgNew(c2v);
+                LogcatHelper.logDInDebug(String.format("conversationCh doListener doMsgNew before"));
+                try {
+                    doMsgNew(c2v);
+                } catch (Exception e) {
+                    LogcatHelper.logDInDebug(String.format("conversationCh doListener doMsgNew exception: %s", e));
+                }
+                LogcatHelper.logDInDebug(String.format("conversationCh doListener doMsgNew after"));
                 break;
             // golang impl(no op):	case constant.CmdSuperGroupMsgCome:
             case Cmd.CMD_UPDATE_CONVERSATION:
@@ -173,6 +183,8 @@ public class Conversation {
             //golang impl(no op): case constant.CmSyncReactionExtensions:
             case Cmd.CMD_NOTIFICATION:
                 doNotificationNew(c2v);
+                break;
+            default:
                 break;
         }
 
@@ -294,6 +306,9 @@ public class Conversation {
                 var msg = ConvertUtil.convertToMsgStruct(v);
                 //unnecessary golang impl: msg.Content = string(v.Content)
                 var attachedInfo = JsonUtil.toObj(v.getAttachedInfo(), AttachedInfoElem.class);
+                if (attachedInfo == null) {
+                    attachedInfo = new AttachedInfoElem();
+                }
                 msg.setAttachedInfoElem(attachedInfo);
                 msg.setStatus(Constants.MSG_STATUS_SEND_SUCCESS);
                 var err = Conversation.msgHandleByContentType(msg);
@@ -301,7 +316,7 @@ public class Conversation {
                     continue;
                 }
                 if (msg.getStatus() == Constants.MSG_STATUS_HAS_DELETED) {
-                    insertMessage.add(ConvertUtil.convertToLocalChatLog(msg));
+                    insertMessage.add(ConvertUtil.msgStructToLocalChatLog(msg));
                     continue;
                 }
                 if (!isNotPrivate) {
@@ -328,7 +343,7 @@ public class Conversation {
                             if (!isConversationUpdate) {
                                 msg.setStatus(Constants.MSG_STATUS_FILTERED);
                             }
-                            updateMessage.add(ConvertUtil.convertToLocalChatLog(msg));
+                            updateMessage.add(ConvertUtil.msgStructToLocalChatLog(msg));
 
                         } else {
                             exceptionMsg.add(ConvertUtil.convertToLocalErrChatLog(msg));
@@ -348,6 +363,8 @@ public class Conversation {
                             case ConversationType.SUPER_GROUP_CHAT:
                                 lc.groupID = v.getGroupID();
                                 break;
+                            default:
+                                break;
                         }
                         if (isConversationUpdate) {
                             if (isSenderConversationUpdate) {
@@ -356,7 +373,7 @@ public class Conversation {
                             newMessages.add(msg);
                         }
                         if (isHistory) {
-                            selfInsertMessage.add(ConvertUtil.convertToLocalChatLog(msg));
+                            selfInsertMessage.add(ConvertUtil.msgStructToLocalChatLog(msg));
                         }
 
                     }
@@ -399,14 +416,14 @@ public class Conversation {
                         }
 
                         if (isHistory) {
-                            othersInsertMessage.add(ConvertUtil.convertToLocalChatLog(msg));
+                            othersInsertMessage.add(ConvertUtil.msgStructToLocalChatLog(msg));
                         }
 
                     } else {
                         exceptionMsg.add(ConvertUtil.convertToLocalErrChatLog(msg));
                         msg.setStatus(Constants.MSG_STATUS_FILTERED);
                         msg.setClientMsgID(msg.getClientMsgID() + System.nanoTime());
-                        othersInsertMessage.add(ConvertUtil.convertToLocalChatLog(msg));
+                        othersInsertMessage.add(ConvertUtil.msgStructToLocalChatLog(msg));
                     }
                 }
 
@@ -472,12 +489,12 @@ public class Conversation {
 
         if (newConversationSet.size() > 0) {
             ConversationNotification.doUpdateConversation(
-                new Cmd2Value(new UpdateConNode(Constants.NEW_CON_DIRECT, JsonUtil.toString(new ArrayList<>(newConversationSet.values())))));
+                new Cmd2Value(new UpdateConNode(Constants.NEW_CON_DIRECT, new ArrayList<LocalConversation>(newConversationSet.values()))));
         }
 
         if (conversationChangedSet.size() > 0) {
             ConversationNotification.doUpdateConversation(
-                new Cmd2Value(new UpdateConNode(Constants.CON_CHANGE_DIRECT, JsonUtil.toString(new ArrayList<>(conversationChangedSet.values()))))
+                new Cmd2Value(new UpdateConNode(Constants.CON_CHANGE_DIRECT, new ArrayList<LocalConversation>(conversationChangedSet.values())))
             );
         }
 
@@ -716,8 +733,10 @@ public class Conversation {
 
 
     public static ReturnWithErr<List<LocalConversation>> getServerConversationList() {
-        var returnWithErr = ApiClient.callApi(ServerApiRouter.GetAllConversationsRouter,
-            GetAllConversationsReq.newBuilder().setOwnerUserID(IMConfig.getInstance().userID),
+
+        var req = GetAllConversationsReq.newBuilder().setOwnerUserID(IMConfig.getInstance().userID).build();
+        var reqJson = ConvertUtil.protobufToJsonStr(req);
+        var returnWithErr = ApiClient.callApi(ServerApiRouter.GetAllConversationsRouter, reqJson,
             GetAllConversationsResp.class);
         if (returnWithErr.hasError()) {
             return new ReturnWithErr<>(returnWithErr.getError());
@@ -731,7 +750,9 @@ public class Conversation {
     public ReturnWithErr<List<LocalConversation>> getServerConversationsByIDs(List<String> conversations) {
         var loginUserID = IMConfig.getInstance().userID;
         var getConversationsReq = GetConversationsReq.newBuilder().setOwnerUserID(loginUserID).addAllConversationIDs(conversations).build();
-        var returnWithErr = ApiClient.callApi(ServerApiRouter.GetConversationsRouter, getConversationsReq, GetConversationsResp.class);
+        var reqJson = ConvertUtil.protobufToJsonStr(getConversationsReq);
+
+        var returnWithErr = ApiClient.callApi(ServerApiRouter.GetConversationsRouter, reqJson, GetConversationsResp.class);
         if (returnWithErr.getError() != null) {
             return new ReturnWithErr<>(returnWithErr.getError());
         }
@@ -743,7 +764,8 @@ public class Conversation {
     public ReturnWithErr<Map<String, Seqs>> getServerHasReadAndMaxSeqs(List<String> conversationIDs) {
         var req = GetConversationsHasReadAndMaxSeqReq.newBuilder().setUserID(IMConfig.getInstance().userID)
             .addAllConversationIDs(conversationIDs).build();
-        ReturnWithErr<GetConversationsHasReadAndMaxSeqResp> returnWithErr = ApiClient.apiPost(ServerApiRouter.GetConversationsHasReadAndMaxSeqRouter, req,
+        var reqJson = ConvertUtil.protobufToJsonStr(req);
+        ReturnWithErr<GetConversationsHasReadAndMaxSeqResp> returnWithErr = ApiClient.apiPost(ServerApiRouter.GetConversationsHasReadAndMaxSeqRouter, reqJson,
             GetConversationsHasReadAndMaxSeqResp.class);
         if (returnWithErr.hasError()) {
             return new ReturnWithErr<>(returnWithErr.getError());

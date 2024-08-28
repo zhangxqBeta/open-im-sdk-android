@@ -164,7 +164,7 @@ public class MessageCheck {
         var seqRange = SeqRange.newBuilder()
             .setConversationID(conversationID)
             .setBegin(newSeqList.get(0))
-            .setEnd(newSeqList.get(newSeqList.size()) - 1)
+            .setEnd(newSeqList.get(newSeqList.size() - 1))
             .setNum(newSeqList.size()).build();
         var pullMsgReq = PullMessageBySeqsReq.newBuilder().setUserID(IMConfig.getInstance().userID).addSeqRanges(seqRange).build();
 
@@ -211,7 +211,7 @@ public class MessageCheck {
             var conversationID = entry.getKey();
             var msgs = entry.getValue();
             for (var v : msgs.getMsgsList()) {
-                var msg = ConvertUtil.convertToLocalChatLog(v);
+                var msg = ConvertUtil.msgStructToLocalChatLog(v);
                 if (msg.status == Constants.MSG_STATUS_HAS_DELETED) {
                     insertMessage.add(msg);
                     continue;

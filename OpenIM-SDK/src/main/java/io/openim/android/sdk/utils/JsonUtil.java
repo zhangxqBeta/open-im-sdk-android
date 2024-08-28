@@ -60,6 +60,7 @@ public class JsonUtil {
     public static <T> T toObj(String gsonString, Class<T> cls) {
         T t = null;
         try {
+            t = cls.newInstance();
             if (null != gsonString) {
                 t = gson.fromJson(gsonString, cls);
             }

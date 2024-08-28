@@ -21,6 +21,7 @@ import io.openim.android.sdk.protos.msg.MarkConversationAsReadReq;
 import io.openim.android.sdk.protos.msg.SetConversationHasReadSeqReq;
 import io.openim.android.sdk.protos.sdkws.MarkAsReadTips;
 import io.openim.android.sdk.protos.sdkws.MsgData;
+import io.openim.android.sdk.utils.ConvertUtil;
 import io.openim.android.sdk.utils.JsonUtil;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,12 +50,14 @@ public class ReadDrawing {
     public static Exception setConversationHasReadSeq(String conversationID, long hasReadSeq) {
         var req = SetConversationHasReadSeqReq.newBuilder().setUserID(IMConfig.getInstance().userID).setConversationID(conversationID).setHasReadSeq(hasReadSeq)
             .build();
-        var returnWithErr = ApiClient.apiPost(ServerApiRouter.SetConversationHasReadSeq, req, null);
+
+        var jsonReq = ConvertUtil.protobufToJsonStr(req);
+        var returnWithErr = ApiClient.apiPost(ServerApiRouter.SetConversationHasReadSeq, jsonReq, null);
         return returnWithErr.getError();
     }
 
     public static void doReadDrawing(MsgData msg) {
-        MarkAsReadTips tips = JsonUtil.parseNotificationElem(msg.getContent().toString(), MarkAsReadTips.class);
+        MarkAsReadTips tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), MarkAsReadTips.class);
         var imDatabase = ChatDbManager.getInstance().getImDatabase();
         var conversation = imDatabase.localConversationDao().getConversation(tips.getConversationID());
         if (tips.getMarkAsReadUserID() != IMConfig.getInstance().userID) {
@@ -100,6 +103,9 @@ public class ReadDrawing {
         var msgs = ChatDbManager.getInstance().getImDatabase().chatLogDao().getMessagesByIDs(conversationID, msgIDs, IMConfig.getInstance().userID);
         for (var msg : msgs) {
             var attachedInfo = JsonUtil.toObj(msg.attachedInfo, io.openim.android.sdk.models.AttachedInfoElem.class);
+            if (attachedInfo == null) {
+                continue;
+            }
             attachedInfo.setHasReadTime(System.currentTimeMillis());
             msg.isRead = true;
             msg.attachedInfo = JsonUtil.toString(attachedInfo);
@@ -177,7 +183,8 @@ public class ReadDrawing {
     public static Exception markConversationAsReadSvr(String conversationID, long hasReadSeq, List<Long> seqs) {
         var req = MarkConversationAsReadReq.newBuilder().setUserID(IMConfig.getInstance().userID).setConversationID(conversationID).setHasReadSeq(hasReadSeq)
             .build();
-        var returnWithErr = ApiClient.apiPost(ServerApiRouter.MarkConversationAsRead, req, null);
+        var jsonReq = ConvertUtil.protobufToJsonStr(req);
+        var returnWithErr = ApiClient.apiPost(ServerApiRouter.MarkConversationAsRead, jsonReq, null);
         return returnWithErr.getError();
     }
 

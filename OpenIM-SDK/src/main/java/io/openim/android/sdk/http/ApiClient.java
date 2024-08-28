@@ -2,7 +2,9 @@ package io.openim.android.sdk.http;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import io.openim.android.sdk.config.IMConfig;
 import io.openim.android.sdk.generics.ReturnWithErr;
+import io.openim.android.sdk.utils.ParamsUtil;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,12 +32,14 @@ public class ApiClient {
         public JsonObject data;
     }
 
-    public static <T> ReturnWithErr<T> apiPost(String api, Object req, Class<T> respClass) {
-        String jsonReq = gson.toJson(req);
+    public static <T> ReturnWithErr<T> apiPost(String api, String jsonReq, Class<T> respClass) {
         RequestBody body = RequestBody.create(jsonReq, JSON);
+        var reqUrl = IMConfig.getInstance().apiAddr + api;
         Request request = new Request.Builder()
-            .url(api)
+            .url(reqUrl)
             .post(body)
+            .addHeader("operationID", ParamsUtil.buildOperationID())
+            .addHeader("token", IMConfig.getInstance().token)
             .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
@@ -50,18 +54,22 @@ public class ApiClient {
                 return new ReturnWithErr<T>(new Exception("API error: " + apiResponse.errMsg));
             }
 
-            // Deserialize the data into the expected response object type
-            return new ReturnWithErr<T>(gson.fromJson(apiResponse.data, respClass));
+            if (respClass == null) {
+                return new ReturnWithErr<>(null, null);
+            } else {
+                // Deserialize the data into the expected response object type
+                return new ReturnWithErr<T>(gson.fromJson(apiResponse.data, respClass));
+            }
         } catch (IOException e) {
             return new ReturnWithErr<T>(e);
         }
     }
 
-    public static <T> ReturnWithErr<T> callApi(String api, Object req, Class<T> respClass) {
-        return apiPost(api, req, respClass);  // Reusing the apiPost method
+    public static <T> ReturnWithErr<T> callApi(String api, String jsonReq, Class<T> respClass) {
+        return apiPost(api, jsonReq, respClass);  // Reusing the apiPost method
     }
 
-    public static <A extends PaginableRequest, B, C> List<C> getPageAll(String api, A req, Function<B, List<C>> fn, Class<B> respClass) throws Exception {
+/*    public static <A extends PaginableRequest, B, C> List<C> getPageAll(String api, A req, Function<B, List<C>> fn, Class<B> respClass) throws Exception {
         if (req.getPagination().getShowNumber() <= 0) {
             req.getPagination().setShowNumber(50);
         }
@@ -82,5 +90,5 @@ public class ApiClient {
             }
         }
         return res;
-    }
+    }*/
 }

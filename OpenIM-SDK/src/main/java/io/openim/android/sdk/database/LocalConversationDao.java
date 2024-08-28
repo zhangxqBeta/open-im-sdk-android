@@ -35,10 +35,10 @@ public abstract class LocalConversationDao {
     @Query("update local_conversations set has_read_seq=:hasReadSeq where conversation_id =:conversationID")
     public abstract void updateHasReadSeq(String conversationID, long hasReadSeq);
 
-    @Query("update local_conversations set unread_count=:unreadCount and has_read_seq=:hasReadSeq where conversation_id =:conversationID")
+    @Query("update local_conversations set unread_count=:unreadCount, has_read_seq=:hasReadSeq where conversation_id =:conversationID")
     public abstract void updateUnreadCountAndHasReadSeq(String conversationID, int unreadCount, long hasReadSeq);
 
-    @Query("update local_conversations set latest_msg_send_time=:latestMsgSendTime and latest_msg=:latestMsg where conversation_id =:conversationID")
+    @Query("update local_conversations set latest_msg_send_time=(:latestMsgSendTime), latest_msg=:latestMsg where conversation_id =:conversationID")
     public abstract void updateLatestMsgAndSendTime(String conversationID, long latestMsgSendTime, String latestMsg);
 
     //return rows affected

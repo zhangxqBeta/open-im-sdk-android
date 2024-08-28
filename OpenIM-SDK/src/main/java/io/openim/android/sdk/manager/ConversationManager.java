@@ -5,6 +5,7 @@ import io.openim.android.sdk.config.IMConfig;
 import io.openim.android.sdk.conversation.Conversation;
 import io.openim.android.sdk.conversation.ReadDrawing;
 import io.openim.android.sdk.conversation.Sdk;
+import io.openim.android.sdk.utils.AsyncUtils;
 import io.openim.android.sdk.utils.CommonUtil;
 import io.openim.android.sdk.utils.ConvertUtil;
 import java.util.Comparator;
@@ -132,12 +133,14 @@ public class ConversationManager {
      */
     public void markGroupMessageHasRead(OnBase<String> base, String groupOrConversationID) {
         if (IMConfig.getInstance().useNativeImpl) {
-            var sdkException = ReadDrawing.markConversationMessageAsRead(groupOrConversationID);
-            if (sdkException == null) {
-                CommonUtil.returnSuccess(base, null);
-            } else {
-                CommonUtil.returnError(base, sdkException.getCode(), sdkException.getMessage());
-            }
+            AsyncUtils.runOnHttpAPIThread(() -> {
+                var sdkException = ReadDrawing.markConversationMessageAsRead(groupOrConversationID);
+                if (sdkException == null) {
+                    CommonUtil.returnSuccess(base, null);
+                } else {
+                    CommonUtil.returnError(base, sdkException.getCode(), sdkException.getMessage());
+                }
+            });
             return;
         }
         Open_im_sdk.markConversationMessageAsRead(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), groupOrConversationID);

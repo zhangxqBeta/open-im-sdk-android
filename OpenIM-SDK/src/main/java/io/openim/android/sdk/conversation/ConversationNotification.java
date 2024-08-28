@@ -26,7 +26,7 @@ public class ConversationNotification {
         var tips = ConversationUpdateTips.newBuilder().build();
         //unmarshal, todo: check parsing
         try {
-            JsonUtil.parseNotificationElem(msg.getContent().toString(), ConversationUpdateTips.class);
+            JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), ConversationUpdateTips.class);
         } catch (Exception e) {
             return;
         }
@@ -114,6 +114,9 @@ public class ConversationNotification {
                 var latestMsg = JsonUtil.toObj(l.latestMsg, Message.class);
                 latestMsg.setRead(true);
                 var newLatestMessage = JsonUtil.toString(latestMsg);
+//                l.latestMsgSendTime = latestMsg.getSendTime();
+//                l.latestMsg = newLatestMessage;
+//                localConversationDao.update(l);
                 localConversationDao.updateLatestMsgAndSendTime(node.conID, latestMsg.getSendTime(), newLatestMessage);
                 break;
             case Constants.CON_CHANGE:
@@ -136,11 +139,15 @@ public class ConversationNotification {
                 }
                 break;
             case Constants.CON_CHANGE_DIRECT:
-                LogcatHelper.logDInDebug("Constants.CON_CHANGE_DIRECT case not implemented error");
-                throw new NotImplementedError();
+                ArrayList<LocalConversation> lcList = (ArrayList<LocalConversation>) node.args;
+                List<ConversationInfo> infos = lcList.stream().map(ConvertUtil::convertToConversationInfo).collect(Collectors.toList());
+                Conversation.getInstance().getOnConversationListener().onConversationChanged(infos);
+                break;
             case Constants.NEW_CON_DIRECT:
-                LogcatHelper.logDInDebug("Constants.NEW_CON_DIRECT case not implemented error");
-                throw new NotImplementedError();
+                ArrayList<LocalConversation> newLcList = (ArrayList<LocalConversation>) node.args;
+                List<ConversationInfo> newInfos = newLcList.stream().map(ConvertUtil::convertToConversationInfo).collect(Collectors.toList());
+                Conversation.getInstance().getOnConversationListener().onNewConversation(newInfos);
+                break;
             case Constants.CONVERSATION_LATEST_MSG_HAS_READ:
                 Map<String, List<String>> hasReadMsgList = (Map<String, List<String>>) node.args;
                 var result = new ArrayList<ConversationInfo>();

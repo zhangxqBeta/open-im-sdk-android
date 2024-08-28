@@ -133,7 +133,10 @@ public class User {
     }
 
     public static ReturnWithErr<List<UserInfo>> getServerUserInfo(List<String> userIDs) {
-        var returnWithErr = ApiClient.callApi(ServerApiRouter.GetUsersInfoRouter, GetDesignateUsersReq.newBuilder().addAllUserIDs(userIDs).build(),
+        var req = GetDesignateUsersReq.newBuilder().addAllUserIDs(userIDs).build();
+        var jsonReq = ConvertUtil.protobufToJsonStr(req);
+
+        var returnWithErr = ApiClient.callApi(ServerApiRouter.GetUsersInfoRouter, jsonReq,
             GetDesignateUsersResp.class);
         if (returnWithErr.getError() != null) {
             return new ReturnWithErr<>(returnWithErr.getError());
@@ -172,7 +175,11 @@ public class User {
     }
 
     public static ReturnWithErr<List<LocalUser>> getUsersInfoFromSvr(List<String> userIDs) {
-        var returnWithErr = ApiClient.callApi(ServerApiRouter.GetUsersInfoRouter, GetDesignateUsersReq.newBuilder().addAllUserIDs(userIDs).build(),
+
+        var req = GetDesignateUsersReq.newBuilder().addAllUserIDs(userIDs).build();
+        var jsonReq = ConvertUtil.protobufToJsonStr(req);
+
+        var returnWithErr = ApiClient.callApi(ServerApiRouter.GetUsersInfoRouter, jsonReq,
             GetDesignateUsersResp.class);
         if (returnWithErr.hasError()) {
             return new ReturnWithErr<>(returnWithErr.getError());

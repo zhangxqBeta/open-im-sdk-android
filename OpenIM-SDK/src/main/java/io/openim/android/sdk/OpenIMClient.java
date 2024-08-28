@@ -413,6 +413,9 @@ public class OpenIMClient {
      * 查询登录状态
      */
     public int getLoginStatus() {
+        if (imConfig.useNativeImpl) {
+            return loginStatus;
+        }
         return (int) Open_im_sdk.getLoginStatus(ParamsUtil.buildOperationID());
     }
 
