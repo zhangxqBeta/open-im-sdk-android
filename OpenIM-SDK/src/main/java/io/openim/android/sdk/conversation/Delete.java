@@ -13,6 +13,8 @@ import io.openim.android.sdk.protos.msg.ClearConversationsMsgReq;
 import io.openim.android.sdk.protos.sdkws.ClearConversationTips;
 import io.openim.android.sdk.protos.sdkws.DeleteMsgsTips;
 import io.openim.android.sdk.protos.sdkws.MsgData;
+import io.openim.android.sdk.sdkdto.ClearConversationTipsPojo;
+import io.openim.android.sdk.sdkdto.DeleteMsgsTipsPojo;
 import io.openim.android.sdk.utils.ConvertUtil;
 import io.openim.android.sdk.utils.JsonUtil;
 import java.util.Arrays;
@@ -21,7 +23,7 @@ import java.util.function.Function;
 public class Delete {
 
     public static void doClearConversations(MsgData msg) {
-        var tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), ClearConversationTips.class);
+        var tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), ClearConversationTipsPojo.class);
         for (var v : tips.getConversationIDsList()) {
             var err = clearConversationAndDeleteAllMsg(v, false, null);
             if (err != null) {
@@ -34,7 +36,7 @@ public class Delete {
     }
 
     public static void doDeleteMsgs(MsgData msg) {
-        var tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), DeleteMsgsTips.class);
+        var tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), DeleteMsgsTipsPojo.class);
         for (var v : tips.getSeqsList()) {
             try {
                 var localMsg = ChatDbManager.getInstance().getImDatabase().chatLogDao().getMessageBySeq(tips.getConversationID(), v);

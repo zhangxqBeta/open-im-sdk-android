@@ -21,6 +21,7 @@ import io.openim.android.sdk.protos.msg.MarkConversationAsReadReq;
 import io.openim.android.sdk.protos.msg.SetConversationHasReadSeqReq;
 import io.openim.android.sdk.protos.sdkws.MarkAsReadTips;
 import io.openim.android.sdk.protos.sdkws.MsgData;
+import io.openim.android.sdk.sdkdto.MarkAsReadTipsPojo;
 import io.openim.android.sdk.utils.ConvertUtil;
 import io.openim.android.sdk.utils.JsonUtil;
 import java.util.ArrayList;
@@ -57,7 +58,7 @@ public class ReadDrawing {
     }
 
     public static void doReadDrawing(MsgData msg) {
-        MarkAsReadTips tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), MarkAsReadTips.class);
+        var tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), MarkAsReadTipsPojo.class);
         var imDatabase = ChatDbManager.getInstance().getImDatabase();
         var conversation = imDatabase.localConversationDao().getConversation(tips.getConversationID());
         if (tips.getMarkAsReadUserID() != IMConfig.getInstance().userID) {

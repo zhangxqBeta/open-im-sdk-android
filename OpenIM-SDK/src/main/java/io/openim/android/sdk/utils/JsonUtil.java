@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import io.openim.android.sdk.models.NotificationElem;
+import io.openim.android.sdk.protos.sdkws.MarkAsReadTips;
 import java.lang.reflect.Type;
 
 import android.util.Base64;
@@ -20,6 +21,7 @@ import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -70,7 +72,9 @@ public class JsonUtil {
         return t;
     }
 
+    //MarkAsReadTips.class, DeleteMsgsTips.class, ClearConversationTips.class, ConversationUpdateTips.class
     public static <T> T parseNotificationElem(String json, Class<T> type) throws JsonSyntaxException {
+
         NotificationElem elem = toObj(json, NotificationElem.class);
         if (elem == null || elem.getDetail() == null) {
             throw new JsonSyntaxException("Notification elem detail is missing");

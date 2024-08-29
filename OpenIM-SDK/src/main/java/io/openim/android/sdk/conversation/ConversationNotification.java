@@ -12,6 +12,7 @@ import io.openim.android.sdk.models.ConversationInfo;
 import io.openim.android.sdk.models.Message;
 import io.openim.android.sdk.protos.sdkws.ConversationUpdateTips;
 import io.openim.android.sdk.protos.sdkws.MsgData;
+import io.openim.android.sdk.sdkdto.ConversationUpdateTipsPojo;
 import io.openim.android.sdk.utils.ConvertUtil;
 import io.openim.android.sdk.utils.JsonUtil;
 import java.util.ArrayList;
@@ -23,14 +24,8 @@ import kotlin.NotImplementedError;
 public class ConversationNotification {
 
     public static void doConversationChangedNotification(MsgData msg) {
-        var tips = ConversationUpdateTips.newBuilder().build();
-        //unmarshal, todo: check parsing
-        try {
-            JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), ConversationUpdateTips.class);
-        } catch (Exception e) {
-            return;
-        }
-        Sync.syncConversations(tips.getConversationIDListList());
+        var tips = JsonUtil.parseNotificationElem(msg.getContent().toStringUtf8(), ConversationUpdateTipsPojo.class);
+        Sync.syncConversations(tips.getConversationIDList());
     }
 
     public static void doUpdateMessage(Cmd2Value c2v) {
