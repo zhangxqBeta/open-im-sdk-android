@@ -40,26 +40,27 @@ public class Connection extends WebSocketClient {
 
     private static final int PONG_WAIT_SECONDS = 30;
     private static final int PING_PERIOD = PONG_WAIT_SECONDS * 9 / 10;
-    private static final int MAX_MESSAGE_SIZE = 1024 * 1024;
-    private static final int MAX_RECONNECT_ATTEMPTS = 300;
 
     private static final int ON_MESSAGE_THREAD_NUM_LIMIT = 4;
     private static final int RESPONSE_BLOCKING_TIMEOUT = 5; //in seconds
 
+    private static final int CONNECT_NETWORK_ERROR = 10000;
+    private static final int RECONNECT_TIMEOUT_IN_MS = 10000;
+
 
     private final OnConnListener listener;
-    private final ReConnector reConnector;
     private HeartBeat heartBeat;
+    private ExponentialRetryStrategy exponentialRetryStrategy;
 
     private ExecutorService onMessageExecutor;
     private ConcurrentHashMap<String, BlockingQueue<GeneralWsResp>> responseQueues;
 
-    private volatile int connStatus;
+    private int connStatus;
 
     public Connection(OnConnListener listener) throws URISyntaxException {
         super(new URI(IMConfig.getInstance().buildWsUrl()));
         this.listener = listener;
-        reConnector = new ReConnector(this);
+        exponentialRetryStrategy = new ExponentialRetryStrategy();
         onMessageExecutor = Executors.newFixedThreadPool(ON_MESSAGE_THREAD_NUM_LIMIT);
         responseQueues = new ConcurrentHashMap<>();
     }
@@ -100,7 +101,7 @@ public class Connection extends WebSocketClient {
                 doPushMsg(wsResp);
                 break;
             case ReqIdentifier.KICK_ONLINE_MSG:
-                ConnectionManager.getInstance().getConnection().getListener().onKickedOffline();
+                ConnectionManager.getInstance().onKickedOffline();
                 Trigger.triggerCmdLogOut(OpenIMClient.getInstance().getLoginMgrCh());
                 break;
 
@@ -142,49 +143,28 @@ public class Connection extends WebSocketClient {
     //WebSocketClient callback
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        LogcatHelper.logDInDebug(String.format("websocket onClose  code: %d, reason: %s, remote: %b", code, reason, remote));
+        LogcatHelper.logDInDebug(String.format("websocket connect onClose  code: %d, reason: %s, remote: %b", code, reason, remote));
+        reConnect(true);
     }
 
     //WebSocketClient callback
     @Override
     public void onError(Exception ex) {
-        LogcatHelper.logDInDebug(String.format("websocket onError : %s", ex));
-    }
-
-    public void sendData() {
-        sendPing();
+        LogcatHelper.logDInDebug(String.format("websocket connect onError : %s", ex));
+        reConnect(true);
     }
 
     public void sendPingToServer() {
         var m = GetMaxSeqReq.newBuilder().setUserID(IMConfig.getInstance().userID).build();
         var wsSeqResp = sendReqWaitResp(ReqIdentifier.GET_NEWEST_SEQ, m, GetMaxSeqResp.parser());
         if (wsSeqResp.hasError()) {
-            LogcatHelper.logDInDebug(String.format("sendPingToServer error : %s", wsSeqResp.getError()));
+            LogcatHelper.logDInDebug(String.format("websocket connect - sendPingToServer error : %s", wsSeqResp.getError()));
             return;
         }
+        LogcatHelper.logDInDebug(String.format("websocket connect - receive pong!"));
         var cmd = new CmdMaxSeqToMsgSync();
         cmd.conversationMaxSeqOnSvr = wsSeqResp.getPayload().getMaxSeqsMap();
         Trigger.triggerCmdMaxSeq(cmd, OpenIMClient.getInstance().getPushMsgAndMaxSeqCh());
-    }
-
-    public void sendWsPingToServer() {
-        String userId = IMConfig.getInstance().userID;
-        byte[] data = GetMaxSeqReq.newBuilder().setUserID(userId).build().toByteArray();
-        LogcatHelper.logDInDebug(String.format("websocket sendWsPingToServer proto data : %s", new String(data)));
-        String opID = ParamsUtil.buildOperationID();
-        String msgIncr = ParamsUtil.genMsgIncr(userId);
-        LogcatHelper.logDInDebug(String.format("websocket sendWsPingToServer opID : %s, msgIncr: %s", opID, msgIncr));
-        GeneralWsReq req = new GeneralWsReq(ReqIdentifier.GET_NEWEST_SEQ, userId, opID, msgIncr, data);
-        var jsonStr = JsonUtil.toString(req);
-        LogcatHelper.logDInDebug(String.format("websocket send jsonStr to server : %s", jsonStr));
-//        var encodeBytes = gobEncoder.encodeAndGetBytes(req);
-        var gzipBytes = GzipUtil.compress(jsonStr.getBytes());
-        try {
-            send(gzipBytes);
-        } catch (Exception e) {
-            LogcatHelper.logDInDebug(String.format("websocket sendWsPingToServer Error : %s", e.toString()));
-        }
-//        sendPing();
     }
 
     public <T extends GeneratedMessageLite> ReturnWithSdkErr<T> sendReqWaitResp(int reqIdentifier, AbstractMessageLite protoReq, Parser<T> parser) {
@@ -199,7 +179,7 @@ public class Connection extends WebSocketClient {
         LogcatHelper.logDInDebug(String.format("websocket send jsonStr to server : %s", jsonStr));
         var gzipBytes = GzipUtil.compress(jsonStr.getBytes());
         if (!isConnected()) {
-            LogcatHelper.logDInDebug(String.format("websocket sendWsPingToServer not connected"));
+            LogcatHelper.logDInDebug(String.format("websocket connect sendWsPingToServer not connected"));
             return new ReturnWithSdkErr<>(new SdkException(SdkException.sdInternalErrCode, "ws not connected"));
         }
         send(gzipBytes);
@@ -233,38 +213,69 @@ public class Connection extends WebSocketClient {
                 return;
             }
             disconnect();
-            doConnect();
+            doConnect(false);
+        });
+    }
+
+    public void reConnect(boolean force) {
+        AsyncUtils.runOnConnectThread(() -> {
+            //如果强制重连，则不检查当前连接状态
+            if (!force && isConnected()) {
+                LogcatHelper.logDInDebug("websocket connect, reConnect hit return: !force && isConnected()");
+                return;
+            }
+            int sleepInterval = exponentialRetryStrategy.getSleepIntervalInMs();
+            LogcatHelper.logDInDebug("websocket connect: " + sleepInterval + "毫秒之后开始重连");
+            SystemClock.sleep(sleepInterval);
+            doConnect(true);
         });
     }
 
 
-    private void doConnect() {
+    private void doConnect(boolean isReconnect) {
+        //check existing connection
+        if (isReconnect) {
+            if (getConnection() != null && getConnection().isOpen()) {
+                LogcatHelper.logDInDebug("websocket connect - is already connected ");
+                return;
+            }
+        }
+
         if (listener != null) {
+            setConnectionStatus(Constants.CONNECTING);
             listener.onConnecting();
         }
+
         try {
-//            super.connect();
-            boolean isSuccess = super.connectBlocking(10000, TimeUnit.MILLISECONDS);
+            boolean isSuccess = false;
+            if (isReconnect) {
+                LogcatHelper.logDInDebug("websocket reconnect start ");
+                isSuccess = super.reconnectBlocking();
+            } else {
+                LogcatHelper.logDInDebug("websocket connect start ");
+                isSuccess = super.connectBlocking(RECONNECT_TIMEOUT_IN_MS, TimeUnit.MILLISECONDS);
+            }
 
             if (isSuccess) {
-                this.connStatus = Constants.CONNECTED;
-                LogcatHelper.logDInDebug("websocket connect Success");
+                setConnectionStatus(Constants.CONNECTED);
+                LogcatHelper.logDInDebug("websocket connect Success. IsReconnect: " + isReconnect);
                 listener.onConnectSuccess();
-                heartBeat = new HeartBeat();
-                new Thread(heartBeat).start();
+                if (!isReconnect) {
+                    heartBeat = new HeartBeat();
+                    new Thread(heartBeat).start();
+                }
+                exponentialRetryStrategy.reset();
             } else {
-                this.connStatus = Constants.DEFAULT_NOT_CONNECT;
-                listener.onConnectFailed(-1, "websocket connect failed");
+                setConnectionStatus(Constants.DEFAULT_NOT_CONNECT);
+                listener.onConnectFailed(CONNECT_NETWORK_ERROR, "websocket connect failed. IsReconnect: " + isReconnect);
+                //重连
+                reConnect(false);
             }
 
         } catch (Exception e) {
-//            throw new RuntimeException(e);
-            //todo
+            LogcatHelper.logDInDebug("websocket connect exception:  " + e);
             return;
         }
-
-        reConnector.cancelReConnect();
-
         //登录
         LogcatHelper.logDInDebug("Start login");
 
@@ -274,30 +285,22 @@ public class Connection extends WebSocketClient {
         if (!isConnected()) {
             return;
         }
-        super.close();
+        setConnectionStatus(Constants.CLOSED);
     }
 
-    public boolean isConnected() {
+    public synchronized boolean isConnected() {
         if (connStatus == Constants.CONNECTED) {
             return true;
         }
         return false;
     }
 
-    public int getConnectionStatus() {
-        return connStatus;
-    }
-
-    public void setConnectionStatus(int status) {
+    public synchronized void setConnectionStatus(int status) {
         connStatus = status;
     }
 
 
     private class HeartBeat implements Runnable {
-
-        public int pingCount;                               // 累计心跳没有回应次数
-
-        public long pongTime = System.currentTimeMillis();  // 上次心跳返回时间
 
         private boolean running = true;
 
@@ -307,15 +310,13 @@ public class Connection extends WebSocketClient {
 
         @Override
         public void run() {
-            LogcatHelper.logDInDebug("websocket - start heartbeat");
+            LogcatHelper.logDInDebug("websocket connect - start heartbeat");
             //heartbeat
             while (running) {
-//                sendPing();
-//                LogcatHelper.logDInDebug("websocket - send ws ping");
 //                sendWsPingToServer();
+                LogcatHelper.logDInDebug("websocket connect - try send ws pingToServer");
                 sendPingToServer();
-                LogcatHelper.logDInDebug("websocket - send ws pingToServer");
-                SystemClock.sleep(1 * PING_PERIOD * 1000);
+                SystemClock.sleep(PING_PERIOD * 1000);
             }
         }
     }

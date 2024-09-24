@@ -266,6 +266,7 @@ public class OpenIMClient {
             SpUtils.putToken(token);
             SpUtils.putUid(uid);
             //init ws
+            ConnectionManager.getInstance().addConnectionListener(connListener);
             ConnectionManager.getInstance().connect();
 
             //init db, move to init

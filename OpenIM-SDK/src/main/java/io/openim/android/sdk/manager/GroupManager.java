@@ -32,7 +32,6 @@ public class GroupManager {
      * 设置组监听器
      */
     public void setOnGroupListener(OnGroupListener listener) {
-        //todo
         if (IMConfig.getInstance().useNativeImpl) {
 //            throw new NotImplementedError();
             LogcatHelper.logDInDebug("setOnGroupListener not implemented yet.");

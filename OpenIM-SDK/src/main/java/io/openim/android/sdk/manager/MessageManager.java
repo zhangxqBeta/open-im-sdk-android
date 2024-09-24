@@ -614,8 +614,8 @@ public class MessageManager {
 
     public void sendMessageNotOss(OnMsgSendCallback base, Message message, String recvUid, String recvGid, OfflinePushInfo offlinePushInfo,
         boolean isOnlineOnly) {
-        //todo: impl
         if (IMConfig.getInstance().useNativeImpl) {
+            LogcatHelper.logDInDebug("sendMessageNotOss NOT IMPLEMENTED!!!!!!!!!!");
             return;
         }
         Open_im_sdk.sendMessageNotOss(new _MsgSendProgressListener(base), ParamsUtil.buildOperationID(), JsonUtil.toString(message), recvUid, recvGid,

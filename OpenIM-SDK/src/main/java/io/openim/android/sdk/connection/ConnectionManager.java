@@ -1,6 +1,5 @@
 package io.openim.android.sdk.connection;
 
-import io.openim.android.sdk.listener.OnAdvanceMsgListener;
 import io.openim.android.sdk.listener.OnConnListener;
 import io.openim.android.sdk.utils.AsyncUtils;
 import io.openim.android.sdk.utils.RunnableWrapper;
@@ -42,10 +41,6 @@ public class ConnectionManager implements OnConnListener {
         isBackground = background;
     }
 
-    public void disConnect() {
-        connection.disconnect();
-    }
-
     public void connect() {
         connection.connectToServer();
     }
@@ -55,8 +50,51 @@ public class ConnectionManager implements OnConnListener {
     }
 
     @Override
-    public void onConnectFailed(long code, String error) {
+    public void onKickedOffline() {
+        AsyncUtils.runOnUiThread(new RunnableWrapper(() -> {
+            for (OnConnListener connectionListener : connectionListeners) {
+                if (connectionListener != null) {
+                    connectionListener.onKickedOffline();
+                }
+            }
+        }));
+    }
 
+    /**
+     * 登录票据已经过期 请使用新签发的 UserSig 进行登录。
+     */
+    @Override
+    public void onUserTokenExpired() {
+        AsyncUtils.runOnUiThread(new RunnableWrapper(() -> {
+            for (OnConnListener connectionListener : connectionListeners) {
+                if (connectionListener != null) {
+                    connectionListener.onUserTokenExpired();
+                }
+            }
+        }));
+    }
+
+
+    @Override
+    public void onConnecting() {
+        AsyncUtils.runOnUiThread(new RunnableWrapper(() -> {
+            for (OnConnListener connectionListener : connectionListeners) {
+                if (connectionListener != null) {
+                    connectionListener.onConnecting();
+                }
+            }
+        }));
+    }
+
+    @Override
+    public void onConnectFailed(long code, String error) {
+        AsyncUtils.runOnUiThread(new RunnableWrapper(() -> {
+            for (OnConnListener connectionListener : connectionListeners) {
+                if (connectionListener != null) {
+                    connectionListener.onConnectFailed(code, error);
+                }
+            }
+        }));
     }
 
     @Override
