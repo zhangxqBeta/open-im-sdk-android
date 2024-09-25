@@ -34,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.handshake.ServerHandshake;
 
 public class Connection extends WebSocketClient {
@@ -178,16 +179,18 @@ public class Connection extends WebSocketClient {
         var jsonStr = JsonUtil.toString(req);
         LogcatHelper.logDInDebug(String.format("websocket send jsonStr to server : %s", jsonStr));
         var gzipBytes = GzipUtil.compress(jsonStr.getBytes());
-        if (!isConnected()) {
-            LogcatHelper.logDInDebug(String.format("websocket connect sendWsPingToServer not connected"));
+        if (!isConnected() || !super.isOpen()) {
+            LogcatHelper.logDInDebug(
+                String.format("websocket connect sendWsPingToServer not connected, openIM status: %b, websocket status: %b", isConnected(), isOpen()));
             return new ReturnWithSdkErr<>(new SdkException(SdkException.sdInternalErrCode, "ws not connected"));
         }
-        send(gzipBytes);
-
-        BlockingQueue<GeneralWsResp> responseQueue = new LinkedBlockingQueue<>();
-        responseQueues.put(opID, responseQueue);
-        LogcatHelper.logDInDebug(String.format("websocket sendReqWaitResp responseQueues put opID : %s", opID));
         try {
+            send(gzipBytes);
+
+            BlockingQueue<GeneralWsResp> responseQueue = new LinkedBlockingQueue<>();
+            responseQueues.put(opID, responseQueue);
+            LogcatHelper.logDInDebug(String.format("websocket sendReqWaitResp responseQueues put opID : %s", opID));
+
             GeneralWsResp resp = responseQueue.poll(RESPONSE_BLOCKING_TIMEOUT, TimeUnit.SECONDS);
             if (resp == null) {
                 LogcatHelper.logDInDebug(String.format("websocket sendReqWaitResp responseQueues resp is null"));
@@ -198,7 +201,8 @@ public class Connection extends WebSocketClient {
                 return new ReturnWithSdkErr<>(new SdkException(resp.getErrCode(), resp.getErrMsg()));
             }
             return new ReturnWithSdkErr<>(parser.parseFrom(resp.getData()));
-        } catch (InterruptedException e) {
+        } catch (InterruptedException | WebsocketNotConnectedException e) {
+            LogcatHelper.logDInDebug(String.format("websocket connect - InterruptedException | WebsocketNotConnectedException: %s ", e));
             return new ReturnWithSdkErr<>(new SdkException(SdkException.sdInternalErrCode, "response channel closed"));
         } catch (InvalidProtocolBufferException e) {
             return new ReturnWithSdkErr<>(SdkException.ErrArgs);
@@ -236,6 +240,7 @@ public class Connection extends WebSocketClient {
         //check existing connection
         if (isReconnect) {
             if (getConnection() != null && getConnection().isOpen()) {
+                exponentialRetryStrategy.reset();
                 LogcatHelper.logDInDebug("websocket connect - is already connected ");
                 return;
             }
