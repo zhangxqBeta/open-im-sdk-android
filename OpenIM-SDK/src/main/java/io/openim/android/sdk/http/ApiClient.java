@@ -68,27 +68,4 @@ public class ApiClient {
     public static <T> ReturnWithErr<T> callApi(String api, String jsonReq, Class<T> respClass) {
         return apiPost(api, jsonReq, respClass);  // Reusing the apiPost method
     }
-
-/*    public static <A extends PaginableRequest, B, C> List<C> getPageAll(String api, A req, Function<B, List<C>> fn, Class<B> respClass) throws Exception {
-        if (req.getPagination().getShowNumber() <= 0) {
-            req.getPagination().setShowNumber(50);
-        }
-        List<C> res = new ArrayList<>();
-        int pageNumber = 0;
-        while (true) {
-            pageNumber++;
-            req.getPagination().setPageNumber(pageNumber);
-            ReturnWithErr<B> returnWithErr = callApi(api, req, respClass);
-            if (returnWithErr.getError() != null) {
-                throw returnWithErr.getError();
-            }
-            B response = returnWithErr.getPayload();
-            List<C> list = fn.apply(response);
-            res.addAll(list);
-            if (list.size() < req.getPagination().getShowNumber()) {
-                break;
-            }
-        }
-        return res;
-    }*/
 }

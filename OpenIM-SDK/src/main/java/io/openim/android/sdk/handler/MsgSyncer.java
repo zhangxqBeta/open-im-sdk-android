@@ -33,8 +33,6 @@ public class MsgSyncer {
     public boolean reinstalled;
     public Map<String, Long> syncedMaxSeqs = new HashMap<>();
 
-//    private BlockingQueue<Cmd2Value> pushMsgAndMaxSeqCh;
-
     public static final int CONNECT_PULL_NUMS = 1;
     public static final int DEFAULT_PULL_NUMS = 10;
     public static final int SPLIT_PULL_MSG_NUM = 100;
@@ -56,19 +54,14 @@ public class MsgSyncer {
         return OpenIMClient.getInstance().getPushMsgAndMaxSeqCh();
     }
 
-//    public void setPushMsgAndMaxSeqCh(
-//        BlockingQueue<Cmd2Value> pushMsgAndMaxSeqCh) {
-//        this.pushMsgAndMaxSeqCh = pushMsgAndMaxSeqCh;
-//    }
-
     public void doListener() {
         while (true) {
             try {
                 Cmd2Value cmd = getPushMsgAndMaxSeqCh().take();
                 LogcatHelper.logDInDebug(String.format("websocket pushMsgAndMaxSeqCh take cmd: %s", cmd));
                 handlePushMsgAndEvent(cmd);
-            } catch (InterruptedException e) {
-
+            } catch (Exception e) {
+                LogcatHelper.logDInDebug(String.format("websocket pushMsgAndMaxSeqCh listener exception: %s", e));
             }
         }
     }
@@ -155,7 +148,9 @@ public class MsgSyncer {
                 storageMsgs.add(msg);
             }
 
-            if (lastSeq == syncedMaxSeqs.get(conversationID) + storageMsgs.size() && lastSeq != 0) {
+            Long maxSeqVal = syncedMaxSeqs.get(conversationID);
+            long maxSeq = maxSeqVal == null ? 0 : maxSeqVal;
+            if (lastSeq == maxSeq + storageMsgs.size() && lastSeq != 0) {
                 var value = new HashMap<String, PullMsgs>();
                 value.put(conversationID, PullMsgs.newBuilder().addAllMsgs(storageMsgs).build());
                 triggerConversation(value);
@@ -227,7 +222,6 @@ public class MsgSyncer {
         syncAndTriggerMsgs(needSyncSeqMap, pullNums);
     }
 
-//    private
 
     private boolean isNotification(String conversationID) {
         return conversationID.startsWith("n_");

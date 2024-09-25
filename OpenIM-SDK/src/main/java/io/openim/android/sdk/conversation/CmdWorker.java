@@ -6,12 +6,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-//所有的golang channel 复用同一个java Worker
-public class CmdWorker extends Thread {
-
-    private final BlockingQueue<Cmd2Value> cmdQueue;
-    private volatile boolean running;
-
+public class CmdWorker {
 
     public static CmdWorker getInstance() {
         return CmdWorker.SingletonHolder.instance;
@@ -21,13 +16,6 @@ public class CmdWorker extends Thread {
 
         static CmdWorker instance = new CmdWorker();
     }
-
-    public CmdWorker() {
-        this.cmdQueue = new LinkedBlockingQueue<>();
-        this.running = true;
-        this.start();
-    }
-
 
     public static void sendCmd(BlockingQueue<Cmd2Value> ch, Cmd2Value value, long timeoutMs) throws InterruptedException {
         LogcatHelper.logDInDebug(String.format("websocket sendCmd value: %s", value));

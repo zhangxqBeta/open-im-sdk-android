@@ -37,15 +37,15 @@ public class OnlineMsgKey {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof Message)) {
+        if (!(o instanceof OnlineMsgKey)) {
             return false;
         }
-        Message message = (Message) o;
-        return Objects.equals(clientMsgID + serverMsgID, message.getClientMsgID() + message.getServerMsgID());
+        OnlineMsgKey onlineMsgKey = (OnlineMsgKey) o;
+        return Objects.equals(clientMsgID + serverMsgID, onlineMsgKey.getClientMsgID() + onlineMsgKey.getServerMsgID());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(clientMsgID + serverMsgID);
+        return Objects.hash(clientMsgID, serverMsgID);
     }
 }

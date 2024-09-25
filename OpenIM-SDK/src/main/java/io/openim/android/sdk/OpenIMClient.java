@@ -340,8 +340,8 @@ public class OpenIMClient {
                         OnBase.super.onSuccess(data);
                     }
                 });
-            } catch (InterruptedException e) {
-
+            } catch (Exception e) {
+                LogcatHelper.logDInDebug(String.format("logoutListener exception: %s", e));
             }
         }
     }

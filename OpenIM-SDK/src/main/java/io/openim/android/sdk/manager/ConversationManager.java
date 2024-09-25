@@ -202,12 +202,15 @@ public class ConversationManager {
 
     public void deleteConversationAndDeleteAllMsg(OnBase<String> base, String conversionID) {
         if (IMConfig.getInstance().useNativeImpl) {
-            var sdkErr = Sdk.DeleteConversationAndDeleteAllMsg(conversionID);
-            if (sdkErr != null) {
-                CommonUtil.returnError(base, sdkErr.getCode(), sdkErr.getMessage());
-            } else {
-                CommonUtil.returnSuccess(base, null);
-            }
+            AsyncUtils.runOnHttpAPIThread(() -> {
+                var sdkErr = Sdk.DeleteConversationAndDeleteAllMsg(conversionID);
+                if (sdkErr != null) {
+                    CommonUtil.returnError(base, sdkErr.getCode(), sdkErr.getMessage());
+                } else {
+                    CommonUtil.returnSuccess(base, null);
+                }
+            });
+
             return;
         }
         Open_im_sdk.deleteConversationAndDeleteAllMsg(BaseImpl.stringBase(base), ParamsUtil.buildOperationID(), conversionID);

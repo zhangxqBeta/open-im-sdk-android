@@ -73,7 +73,8 @@ public class Connection extends WebSocketClient {
     //WebSocketClient callback
     @Override
     public void onOpen(ServerHandshake handshakeData) {
-        LogcatHelper.logDInDebug(String.format("websocket handshake status: %d, msg: %s", handshakeData.getHttpStatus(), handshakeData.getHttpStatusMessage()));
+        LogcatHelper.logDInDebug(
+            String.format("websocket connect handshake status: %d, msg: %s", handshakeData.getHttpStatus(), handshakeData.getHttpStatusMessage()));
     }
 
     //WebSocketClient callback

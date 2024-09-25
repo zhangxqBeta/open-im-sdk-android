@@ -77,7 +77,6 @@ public class Conversation {
     private Cache<String, LocalConversation> cache;
     private MaxSeqRecorder maxSeqRecorder;
     private Date startTime;
-//    private BlockingQueue<Cmd2Value> recvCH;
 
     public static Conversation getInstance() {
         return Conversation.SingletonHolder.instance;
@@ -98,12 +97,7 @@ public class Conversation {
     public BlockingQueue<Cmd2Value> getConversationCh() {
         return OpenIMClient.getInstance().getConversationCh();
     }
-
-//    public void setConversationCh(
-//        BlockingQueue<Cmd2Value> conversationCh) {
-//        this.recvCH = conversationCh;
-//    }
-
+    
     public OnConversationListener getOnConversationListener() {
         return onConversationListener;
     }

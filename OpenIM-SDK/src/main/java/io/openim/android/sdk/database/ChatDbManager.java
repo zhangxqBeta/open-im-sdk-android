@@ -19,8 +19,6 @@ public class ChatDbManager {
 
     public void init(Context context, String uid) {
         imDatabase = IMDatabase.getInstance(context, uid);
-//        var ss = imDatabase.localConversationDao().getAllConversations();
-//        LogcatHelper.logDInDebug("openim size:" + ss.size());
     }
 
     public IMDatabase getImDatabase() {

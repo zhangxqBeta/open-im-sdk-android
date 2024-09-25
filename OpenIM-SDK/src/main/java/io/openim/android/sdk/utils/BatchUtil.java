@@ -17,7 +17,5 @@ public class BatchUtil {
         }
         return result;
     }
-
-//    public static <T, V> List<LocalConversation> batch(Function<T,V> serverConversationToLocal, List<String> conversationIDsList) {
-//    }
+    
 }
