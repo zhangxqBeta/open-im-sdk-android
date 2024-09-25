@@ -4,6 +4,7 @@ package io.openim.android.sdk.enums;
  * 会话类型
  */
 public class ConversationType {
+
     /**
      * 当前会话是单聊
      */

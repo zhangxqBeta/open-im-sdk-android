@@ -3,6 +3,7 @@ package io.openim.android.sdk.models;
 import java.util.Objects;
 
 public class UserInfo {
+
     /**
      * 用户id
      */
@@ -278,10 +279,13 @@ public class UserInfo {
         this.forbidden = forbidden;
     }
 
+
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof UserInfo)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof UserInfo))
+            return false;
         UserInfo userInfo = (UserInfo) o;
         return Objects.equals(userID, userInfo.userID);
     }

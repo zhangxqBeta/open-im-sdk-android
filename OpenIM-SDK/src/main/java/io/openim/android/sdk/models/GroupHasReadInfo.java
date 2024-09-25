@@ -14,6 +14,11 @@ public class GroupHasReadInfo implements Serializable {
      */
     private int unreadCount;
 
+    /**
+     * 对齐golang实现
+     */
+    private int groupMemberCount;
+
 
     public int getHasReadCount() {
         return hasReadCount;
@@ -29,5 +34,13 @@ public class GroupHasReadInfo implements Serializable {
 
     public void setUnreadCount(int unreadCount) {
         this.unreadCount = unreadCount;
+    }
+
+    public int getGroupMemberCount() {
+        return groupMemberCount;
+    }
+
+    public void setGroupMemberCount(int groupMemberCount) {
+        this.groupMemberCount = groupMemberCount;
     }
 }

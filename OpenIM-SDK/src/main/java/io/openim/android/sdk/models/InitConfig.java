@@ -14,6 +14,12 @@ public class InitConfig {
         this.wsAddr = wsUrl;
         this.dataDir = storageDir;
     }
+    public InitConfig(String apiUrl, String wsUrl, String storageDir, boolean useNativeImpl) {
+        this.apiAddr = apiUrl;
+        this.wsAddr = wsUrl;
+        this.dataDir = storageDir;
+        this.useNativeImpl = useNativeImpl;
+    }
 
     public final int platformID = 2;
     public String apiAddr;
@@ -22,4 +28,5 @@ public class InitConfig {
     public int logLevel = 6;
     public boolean isLogStandardOutput;
     public String logFilePath;
+    public boolean useNativeImpl;
 }

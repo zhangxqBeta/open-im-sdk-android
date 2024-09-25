@@ -1,0 +1,46 @@
+//https://github.com/openimsdk/protocol/blob/025d631f99c2a5de6074aec5543df8e63e06f2fa/conversation/conversation.proto
+//protoc: 3.21.12
+//生成命令：protoc --java_out=lite:./src/main/java ./src/main/proto/conversation.proto
+
+syntax = "proto3";
+package openim.conversation;
+option java_multiple_files = true;
+option java_package = "io.openim.android.sdk.protos.conversation";
+
+message Conversation{
+    string ownerUserID = 1;
+    string conversationID = 2;
+    int32 recvMsgOpt = 3;
+    int32 conversationType = 4;
+    string userID = 5;
+    string groupID = 6;
+    bool isPinned = 7;
+    string attachedInfo = 8;
+    bool isPrivateChat = 9;
+    int32 groupAtType = 10;
+    string ex = 11;
+    int32 burnDuration = 12;
+    int64 minSeq = 13;
+    int64 maxSeq = 14;
+    int64 msgDestructTime = 15;
+    int64 latestMsgDestructTime = 16;
+    bool isMsgDestruct = 17;
+}
+
+message GetConversationsReq{
+    string ownerUserID = 1;
+    repeated string conversationIDs = 2;
+}
+
+message GetConversationsResp{
+    repeated Conversation conversations = 2;
+}
+
+message GetAllConversationsReq{
+    string ownerUserID = 1;
+}
+
+message GetAllConversationsResp{
+    repeated Conversation conversations = 2;
+}
+

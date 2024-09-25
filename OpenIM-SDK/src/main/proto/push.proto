@@ -1,0 +1,16 @@
+//https://github.com/openimsdk/protocol/blob/025d631f99c2a5de6074aec5543df8e63e06f2fa/push/push.proto
+//protoc: 3.21.12
+//生成命令：protoc --java_out=lite:./src/main/java ./src/main/proto/push.proto
+
+syntax = "proto3";
+package openim.push;
+option java_multiple_files = true;
+option java_package = "io.openim.android.sdk.protos.push";
+
+message DelUserPushTokenReq{
+    string userID = 1;
+    int32 platformID = 2;
+}
+
+message DelUserPushTokenResp{
+}

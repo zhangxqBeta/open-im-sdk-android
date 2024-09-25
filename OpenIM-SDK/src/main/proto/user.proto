@@ -1,0 +1,25 @@
+//https://github.com/openimsdk/protocol/blob/025d631f99c2a5de6074aec5543df8e63e06f2fa/user/user.proto
+//protoc: 3.21.12
+//生成命令：protoc -I=./src/main/proto --java_out=lite:./src/main/java ./src/main/proto/user.proto
+
+syntax = "proto3";
+package openim.user;
+
+import "sdkws.proto";
+
+option java_multiple_files = true;
+option java_package = "io.openim.android.sdk.protos.user";
+
+
+message OnlineStatus {
+    string userID = 1;
+    int32 status = 2;
+    repeated int32 platformIDs = 3;
+}
+
+message GetDesignateUsersReq{
+    repeated string userIDs = 1;
+}
+message GetDesignateUsersResp{
+    repeated sdkws.UserInfo usersInfo = 1;
+}

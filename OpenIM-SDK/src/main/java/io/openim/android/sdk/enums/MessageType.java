@@ -4,6 +4,7 @@ package io.openim.android.sdk.enums;
  * 消息类型
  */
 public class MessageType {
+
     /**
      * 文本
      */
@@ -48,7 +49,7 @@ public class MessageType {
     /**
      * 已读
      */
-    public static final int HAS_READ_RECEIPT = 112;
+//    public static final int HAS_READ_RECEIPT = 112;
     /**
      * 正在输入
      */
@@ -116,6 +117,12 @@ public class MessageType {
     public static final int SIGNALING_NTF = 1601;
     public static final int SIGNALING_NTF_END = 1699;
     public static final int BURN_AFTER_READING_NTF = 1701;
+
+    public static final int CONVERSATION_UNREAD_NOTIFICATION = 1702;
+    public static final int CLEAR_CONVERSATION_NOTIFICATION = 2101;
+    public static final int DELETE_MSGS_NOTIFICATION = 2102;
+    public static final int HAS_READ_RECEIPT = 2200;
+
 
     public static final int NTF_END = 2000;
 

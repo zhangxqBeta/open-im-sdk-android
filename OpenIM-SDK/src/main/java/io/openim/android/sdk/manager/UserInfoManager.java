@@ -3,6 +3,8 @@ package io.openim.android.sdk.manager;
 import android.util.ArrayMap;
 
 
+import io.openim.android.sdk.config.IMConfig;
+import io.openim.android.sdk.internal.log.LogcatHelper;
 import java.util.List;
 import java.util.Map;
 
@@ -19,10 +21,15 @@ import io.openim.android.sdk.utils.ParamsUtil;
 import open_im_sdk.Open_im_sdk;
 
 public class UserInfoManager {
+
     /**
      * 设置当前用户资料变更监听器
      */
     public void setOnUserListener(OnUserListener listener) {
+        if (IMConfig.getInstance().useNativeImpl) {
+            LogcatHelper.logDInDebug("setOnUserListener not needed for construct.");
+            return;
+        }
         Open_im_sdk.setUserListener(new _UserListener(listener));
     }
 
@@ -30,7 +37,7 @@ public class UserInfoManager {
      * 根据uid 批量查询用户信息
      *
      * @param uidList 用户id列表
-     * @param base    callback List<{@link UserInfo}>
+     * @param base callback List<{@link UserInfo}>
      */
     public void getUsersInfo(OnBase<List<UserInfo>> base, List<String> uidList) {
         Open_im_sdk.getUsersInfo(BaseImpl.arrayBase(base, UserInfo.class), ParamsUtil.buildOperationID(), JsonUtil.toString(uidList));
@@ -38,28 +45,25 @@ public class UserInfoManager {
 
     /**
      * 从缓存获取用户信息
-     * @param callBack
-     * @param uidList
-     * @param groupID
      */
-    public void getUsersInfoWithCache(OnBase<List<UserInfo>> callBack,List<String> uidList,String groupID){
+    public void getUsersInfoWithCache(OnBase<List<UserInfo>> callBack, List<String> uidList, String groupID) {
         Open_im_sdk.getUsersInfoWithCache(BaseImpl.arrayBase(callBack, UserInfo.class),
-            ParamsUtil.buildOperationID(),JsonUtil.toString(uidList),groupID);
+            ParamsUtil.buildOperationID(), JsonUtil.toString(uidList), groupID);
     }
 
     /**
      * 修改资料
      *
-     * @param nickname    名字
-     * @param faceURL     头像
-     * @param gender      性别
+     * @param nickname 名字
+     * @param faceURL 头像
+     * @param gender 性别
      * @param phoneNumber 手机号
-     * @param birth       出生日期
-     * @param email       邮箱
-     * @param base        callback String
+     * @param birth 出生日期
+     * @param email 邮箱
+     * @param base callback String
      */
     public void setSelfInfo(OnBase<String> base, String nickname, String faceURL, int gender, int appMangerLevel, String phoneNumber, long birth,
-                            String email, String ex) {
+        String email, String ex) {
         Map<String, Object> map = new ArrayMap<>();
         map.put("nickname", nickname);
         map.put("faceURL", faceURL);
@@ -111,10 +115,9 @@ public class UserInfoManager {
 //    }
 
 
-    public void getUserStatus(OnBase<List<UsersOnlineStatus>> callback,List<String> ids){
-        Open_im_sdk.getUserStatus(BaseImpl.arrayBase(callback,UsersOnlineStatus.class),ParamsUtil.buildOperationID(),JsonUtil.toString(ids));
+    public void getUserStatus(OnBase<List<UsersOnlineStatus>> callback, List<String> ids) {
+        Open_im_sdk.getUserStatus(BaseImpl.arrayBase(callback, UsersOnlineStatus.class), ParamsUtil.buildOperationID(), JsonUtil.toString(ids));
     }
-
 
 
 }
