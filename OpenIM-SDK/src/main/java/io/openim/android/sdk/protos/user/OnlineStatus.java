@@ -6,7 +6,7 @@ package io.openim.android.sdk.protos.user;
 /**
  * Protobuf type {@code openim.user.OnlineStatus}
  */
-public  final class OnlineStatus extends
+public final class OnlineStatus extends
     com.google.protobuf.GeneratedMessageLite<
         OnlineStatus, OnlineStatus.Builder> implements
     // @@protoc_insertion_point(message_implements:openim.user.OnlineStatus)
